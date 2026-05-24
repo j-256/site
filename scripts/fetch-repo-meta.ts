@@ -166,5 +166,8 @@ async function main(): Promise<void> {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  main().catch((err) => {
+    console.error('fetch-repo-meta: unhandled error', err);
+    process.exit(1);
+  });
 }
