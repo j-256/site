@@ -11,11 +11,17 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
     "astro": "^6.3.7",
     "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^4.1.7",
+    "vitest": "^4.1.7"
   }
 }
