@@ -47,7 +47,7 @@ export const projects: Project[] = [
     perms: '-rwxr-xr-x',
     owner: 'jklein',
     group: 'staff',
-    meta: { source: 'release' },
+    meta: { source: 'pushed' },
     name: 'ccam',
     repo: 'j-256/ccam',
     desc: 'TS CLI + SDK for Salesforce Commerce Cloud Account Manager',

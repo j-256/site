@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "fetch-repo-meta": "tsx scripts/fetch-repo-meta.ts",
+    "build": "npm run fetch-repo-meta && astro build",
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro check",
@@ -21,7 +22,9 @@
     "typescript": "^6.0.3"
   },
   "devDependencies": {
+    "@types/node": "^25.9.1",
     "@vitest/ui": "^4.1.7",
+    "tsx": "^4.22.3",
     "vitest": "^4.1.7"
   }
 }
