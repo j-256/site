@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import BootBanner from '../components/BootBanner.astro';
+import Hostbar from '../components/Hostbar.astro';
 import Section from '../components/Section.astro';
 import ProjectsList from '../components/ProjectsList.astro';
 import LinksList from '../components/LinksList.astro';
@@ -8,6 +9,7 @@ import PromptCursor from '../components/PromptCursor.astro';
 ---
 <Base>
   <BootBanner />
+  <Hostbar />
 
   <Section command="cat ~/about">
     <p>
@@ -19,7 +21,7 @@ import PromptCursor from '../components/PromptCursor.astro';
       (formerly <a href="https://en.wikipedia.org/wiki/Demandware">Demandware</a>) by trade. Reverse-engineering platform internals, debugging production integrations, and writing the tools to make it faster.
     </p>
     <p>
-      Off the clock: shell utilities at <a href="https://toolio.sh" target="_blank" rel="noopener noreferrer">toolio.sh</a>, browser bookmarklets and Tampermonkey userscripts, macOS QuickLook gap-fillers, and the occasional Cloudflare Worker. Most of them started as "the existing tool didn't do this." Some on <a href="https://github.com/j-256" target="_blank" rel="noopener noreferrer">github.com/j-256</a>, some not on the internet at all.
+      Off the clock: shell utilities at <a href="https://toolio.sh" target="_blank" rel="noopener noreferrer">toolio.sh</a>, a typed SDK, a macOS extension, browser bookmarklets and userscripts, the occasional Cloudflare Worker. Some on <a href="https://github.com/j-256" target="_blank" rel="noopener noreferrer">github.com/j-256</a>, some not on the internet at all.
     </p>
   </Section>
 

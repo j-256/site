@@ -1,18 +1,40 @@
 ---
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { siteHost } from '../lib/site-host';
 
 const banner = readFileSync(resolve(process.cwd(), 'src/data/banner.txt'), 'utf-8');
-const buildDate = new Date().toUTCString().replace(/^[A-Za-z]+, /, '');
-const SITE_HOST = siteHost();
 ---
-<header class="boot" aria-label="Site header" data-boot data-host={SITE_HOST}>
-  <p class="login" data-boot-line>Last login: <span class="login-date">{buildDate}</span> from <span class="login-from" data-from>a stranger</span></p>
+<aside class="boot" aria-label="Boot transcript" data-boot>
   <pre class="banner" aria-hidden="true" data-boot-line>{banner}</pre>
-  <h1 class="wordmark">{SITE_HOST}</h1>
-  <p class="tagline" data-boot-line>Builds what the situation calls for. Documents it for the next <span class="next-up"><span class="original">person</span><span class="alt" aria-hidden="true">agent</span>.</span></p>
-</header>
+  <p class="prompt-line" data-boot-line><span class="prompt">$</span> <span class="cursor" aria-hidden="true"></span></p>
+</aside>
+
+<script is:inline>
+  // Synchronously decide whether the banner types in or just shows up. The full
+  // boot.ts module loads asynchronously and inherits whichever state we set here.
+  // The boot block is always visible -- the only question is whether the typing
+  // animation runs.
+  (function () {
+    var boot = document.querySelector('[data-boot]');
+    if (!boot) return;
+    var params = new URLSearchParams(location.search);
+    var force = params.has('animate');
+    var seen = null;
+    try { seen = localStorage.getItem('bootSeen'); } catch (e) {}
+    var fresh = !force && seen && (Date.now() - new Date(seen).getTime()) < 7 * 86400000;
+    var reduced = !force && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (fresh || reduced) {
+      // Repeat visitors and reduced-motion users see the boot block as static text.
+      // No typing animation runs.
+    } else {
+      boot.classList.add('typing');
+      // Override browser scroll restoration so a reload-with-cached-scroll-position
+      // doesn't put the viewport below the boot block while the animation plays.
+      try { history.scrollRestoration = 'manual'; } catch (e) {}
+      window.scrollTo(0, 0);
+    }
+  })();
+</script>
 
 <script>
   import '../scripts/boot';
@@ -20,44 +42,19 @@ const SITE_HOST = siteHost();
 
 <style>
   .boot {
-    margin-bottom: 2em;
+    margin-bottom: 1.5em;
   }
-  .login, .tagline {
+  .banner, .prompt-line {
     margin: 0.5em 0;
   }
-  .banner {
-    margin: 0.5em 0;
+  .boot.typing .banner,
+  .boot.typing .prompt-line {
+    visibility: hidden;
   }
-  /* Cheeky hover swap: "person" -> "agent". Instant display toggle so the period reflows
-     tight against whichever word is showing. A crossfade would require both words to share
-     the longer slot, leaving a visible gap before the period; at any speed short enough to
-     not feel like an event the fade reads as flicker, so we don't bother. */
-  .alt { display: none; }
-  /* The period lives inside .next-up so hovering it triggers the swap (a sibling text node
-     would create flicker as hit-testing alternates between the span and the bare period).
-     When "agent" (5ch) replaces "person" (6ch), an extra 1ch of right-padding keeps the
-     hitbox visually identical regardless of which word is displayed. */
-  .next-up {
-    padding: 0.4em 0.55em;
-    margin: -0.4em -0.55em;
-  }
-  @media (hover: hover) {
-    .next-up { cursor: help; }
-    .next-up:hover {
-      padding-right: calc(0.55em + 1ch);
-      margin-right: calc(-0.55em - 1ch);
-    }
-    .next-up:hover .original { display: none; }
-    .next-up:hover .alt { display: inline; }
+  .boot.typing .typed {
+    visibility: visible;
   }
   @media (max-width: 599px) {
     .banner { display: none; }
-    .boot::before {
-      content: attr(data-host);
-      display: block;
-      font-weight: 700;
-      font-size: 1.5em;
-      color: var(--fg-bright);
-    }
   }
 </style>

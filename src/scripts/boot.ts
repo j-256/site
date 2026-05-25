@@ -1,17 +1,12 @@
 const STORAGE_KEY = 'bootSeen';
 const FRESH_DAYS = 7;
-const TYPE_RATE_MS = 6;
-const LINE_RATE_MS = 30;
-
-function settled(boot: HTMLElement): void {
-  boot.classList.remove('typing');
-  boot.classList.add('settled');
-  try {
-    localStorage.setItem(STORAGE_KEY, new Date().toISOString());
-  } catch { /* localStorage may be unavailable; non-fatal */ }
-}
+const TYPE_RATE_MS = 8;
+const BANNER_TYPE_RATE_MS = 0.8;
 
 function shouldSkipAnimation(): boolean {
+  // ?animate overrides both reduced-motion and the localStorage freshness check.
+  // Intended for development; real users won't add the flag.
+  if (new URLSearchParams(location.search).has('animate')) return false;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
   try {
     const last = localStorage.getItem(STORAGE_KEY);
@@ -23,69 +18,98 @@ function shouldSkipAnimation(): boolean {
   }
 }
 
-async function typeChars(target: HTMLElement, text: string): Promise<void> {
-  target.textContent = '';
-  for (const ch of text) {
-    target.textContent += ch;
-    await new Promise(r => setTimeout(r, TYPE_RATE_MS));
-  }
+interface TextNodeSnapshot {
+  node: Text;
+  full: string;
 }
 
-async function revealLines(boot: HTMLElement, signal: AbortSignal): Promise<void> {
-  const lines = Array.from(boot.querySelectorAll<HTMLElement>('[data-boot-line]'));
-  for (const line of lines) {
-    if (signal.aborted) return;
-    line.classList.add('typed');
-    if (line.classList.contains('banner')) {
-      // banner reveals as a whole block, not char-by-char
-      line.style.visibility = 'visible';
-      await new Promise(r => setTimeout(r, LINE_RATE_MS));
-    } else {
-      const original = line.textContent ?? '';
-      line.style.visibility = 'visible';
-      await typeChars(line, original);
+function snapshotTextNodes(root: HTMLElement): TextNodeSnapshot[] {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const snapshots: TextNodeSnapshot[] = [];
+  let current = walker.nextNode();
+  while (current) {
+    const text = current as Text;
+    snapshots.push({ node: text, full: text.data });
+    text.data = '';
+    current = walker.nextNode();
+  }
+  return snapshots;
+}
+
+async function typeNodes(snapshots: TextNodeSnapshot[], rateMs: number, signal: AbortSignal): Promise<void> {
+  for (const { node, full } of snapshots) {
+    for (const ch of full) {
+      if (signal.aborted) return;
+      node.data += ch;
+      await new Promise(r => setTimeout(r, rateMs));
     }
   }
 }
 
-async function maybeFetchIp(boot: HTMLElement): Promise<void> {
-  const params = new URLSearchParams(location.search);
-  if (params.get('from') !== 'ip') return;
-  const fromEl = boot.querySelector<HTMLElement>('[data-from]');
-  if (!fromEl) return;
-  const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 250));
-  const fetched = fetch('https://api.ipify.org?format=json')
-    .then(r => r.json())
-    .then((j: { ip: string }) => j.ip)
-    .catch(() => null);
-  const ip = await Promise.race([fetched, timeout]);
-  if (ip) fromEl.textContent = ip;
+interface LinePrep {
+  line: HTMLElement;
+  snapshots: TextNodeSnapshot[];
+  isBanner: boolean;
+}
+
+function prepareLines(boot: HTMLElement): LinePrep[] {
+  // Lock each line's natural height as min-height BEFORE emptying its text nodes.
+  // Otherwise emptied <pre> banners and prose lines collapse to 0/1 line, the
+  // page reflows tighter, and subsequent content jumps when typing fills space
+  // back in. Locking heights up front keeps layout stable for the entire animation.
+  const lines = Array.from(boot.querySelectorAll<HTMLElement>('[data-boot-line]'));
+  const preps: LinePrep[] = [];
+  for (const line of lines) {
+    const naturalHeight = line.getBoundingClientRect().height;
+    line.style.minHeight = `${naturalHeight}px`;
+    const isBanner = line.classList.contains('banner');
+    const snapshots = snapshotTextNodes(line);
+    preps.push({ line, snapshots, isBanner });
+  }
+  return preps;
+}
+
+async function revealLines(preps: LinePrep[], signal: AbortSignal): Promise<void> {
+  for (const { line, snapshots, isBanner } of preps) {
+    if (signal.aborted) return;
+    line.classList.add('typed');
+    line.style.visibility = 'visible';
+    // Banner uses a faster char rate so the 8-line ASCII art reveals quickly
+    // instead of feeling like a multi-second wait. Prose uses the standard rate.
+    await typeNodes(snapshots, isBanner ? BANNER_TYPE_RATE_MS : TYPE_RATE_MS, signal);
+  }
 }
 
 function init(): void {
   const boot = document.querySelector<HTMLElement>('[data-boot]');
   if (!boot) return;
 
-  const controller = new AbortController();
-  const skip = (): void => {
-    controller.abort();
-    settled(boot);
-  };
-
+  // The inline <script is:inline> in BootBanner.astro decided whether to start
+  // in 'typing' state or render statically. If it chose static, just write the
+  // timestamp and bail.
+  if (!boot.classList.contains('typing')) {
+    try { localStorage.setItem(STORAGE_KEY, new Date().toISOString()); } catch {}
+    return;
+  }
   if (shouldSkipAnimation()) {
-    settled(boot);
+    // Edge case: typing class was set by inline script but reduced-motion
+    // changed mid-load. Just clear it.
+    boot.classList.remove('typing');
     return;
   }
 
-  boot.classList.add('typing');
-  ['keydown', 'pointerdown', 'wheel', 'touchstart'].forEach(ev => {
-    window.addEventListener(ev, skip, { once: true, passive: true });
-  });
+  const controller = new AbortController();
+
+  // Lock heights and snapshot text nodes BEFORE awaiting anything async, so
+  // the inline-script-applied .typing class can hide content while we still
+  // have access to the natural heights and original text.
+  const preps = prepareLines(boot);
 
   void (async () => {
-    await maybeFetchIp(boot);
-    await revealLines(boot, controller.signal);
-    if (!controller.signal.aborted) settled(boot);
+    await revealLines(preps, controller.signal);
+    // Once typing finishes, the cursor on the prompt line blinks indefinitely.
+    // Save the timestamp so the next visit doesn't re-animate.
+    try { localStorage.setItem(STORAGE_KEY, new Date().toISOString()); } catch {}
   })();
 }
 

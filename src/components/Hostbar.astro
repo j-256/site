@@ -1,0 +1,51 @@
+---
+// Site identity bar. Sits in normal flow under the boot transcript, becomes
+// sticky once the viewport scrolls past it. The hover-swap easter egg on the
+// tagline lives here.
+---
+<header class="hostbar" aria-label="Site header">
+  <h1 class="wordmark">James Klein</h1>
+  <p class="tagline">Builds what the situation calls for. Documents it for the next <span class="next-up"><span class="original">person</span><span class="alt" aria-hidden="true">agent</span>.</span></p>
+</header>
+
+<style>
+  .hostbar {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+    border-bottom: 1px solid var(--fg-dim);
+    padding: 0.5em 0;
+    margin-bottom: 1.5em;
+  }
+  .wordmark {
+    font-weight: 700;
+    font-size: 1.25em;
+    color: var(--fg-bright);
+    margin: 0;
+  }
+  .tagline {
+    font-size: 0.9em;
+    margin: 0.25em 0 0;
+  }
+  /* Cheeky hover swap: "person" -> "agent". Instant display toggle so the period reflows
+     tight against whichever word is showing. The period lives inside .next-up so hovering
+     it triggers the swap (a sibling text node would create flicker as hit-testing alternates
+     between the span and the bare period). When "agent" (5ch) replaces "person" (6ch), an
+     extra 1ch of right-padding keeps the hitbox visually identical regardless of which
+     word is displayed. */
+  .alt { display: none; }
+  .next-up {
+    padding: 0.4em 0.55em;
+    margin: -0.4em -0.55em;
+  }
+  @media (hover: hover) {
+    .next-up { cursor: help; }
+    .next-up:hover {
+      padding-right: calc(0.55em + 1ch);
+      margin-right: calc(-0.55em - 1ch);
+    }
+    .next-up:hover .original { display: none; }
+    .next-up:hover .alt { display: inline; }
+  }
+</style>
