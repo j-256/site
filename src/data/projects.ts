@@ -1,6 +1,7 @@
 export type MetaSource =
   | { source: 'pushed' }
-  | { source: 'release' };
+  | { source: 'release' }
+  | { source: 'tag' };
 
 export interface Project {
   perms: string;
@@ -29,7 +30,7 @@ export const projects: Project[] = [
     perms: '-rwxr-xr-x',
     owner: 'jklein',
     group: 'staff',
-    meta: 'stable',
+    meta: { source: 'tag' },
     name: 'rover-dumper',
     repo: 'j-256/rover-dumper',
     desc: "Bookmarklet: download every photo of your pet from Rover.com as a zip",
@@ -47,7 +48,7 @@ export const projects: Project[] = [
     perms: '-rwxr-xr-x',
     owner: 'jklein',
     group: 'staff',
-    meta: { source: 'pushed' },
+    meta: { source: 'release' },
     name: 'ccam',
     repo: 'j-256/ccam',
     desc: 'TypeScript CLI and SDK for the Commerce Cloud Account Manager API (and its reference implementation, since the API is undocumented)',
@@ -65,7 +66,7 @@ export const projects: Project[] = [
     perms: 'drwxr-xr-x',
     owner: 'jklein',
     group: 'staff',
-    meta: 'stable',
+    meta: { source: 'release' },
     name: 'qlomni',
     repo: 'j-256/qlomni',
     desc: "macOS QuickLook extension for the text files macOS itself won't preview",

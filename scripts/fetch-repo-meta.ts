@@ -75,6 +75,10 @@ interface ReleaseResponse {
   tag_name: string;
 }
 
+interface TagResponse {
+  name: string;
+}
+
 async function ghFetch<T>(url: string): Promise<T> {
   const res = await fetch(url, {
     headers: {
@@ -101,6 +105,14 @@ async function fetchReleaseTag(repo: string): Promise<string> {
   return data.tag_name;
 }
 
+async function fetchLatestTag(repo: string): Promise<string> {
+  const data = await ghFetch<TagResponse[]>(`https://api.github.com/repos/${repo}/tags`);
+  if (data.length === 0) {
+    throw new Error(`No tags found for ${repo}`);
+  }
+  return data[0].name;
+}
+
 function isMetaSource(meta: Project['meta']): meta is MetaSource {
   return typeof meta === 'object' && meta !== null && 'source' in meta;
 }
@@ -110,10 +122,18 @@ async function tryFetch(project: Project): Promise<{ ok: true; value: string } |
     return { ok: true, value: project.meta };
   }
   try {
-    const value =
-      project.meta.source === 'pushed'
-        ? await fetchPushed(project.repo)
-        : await fetchReleaseTag(project.repo);
+    let value: string;
+    switch (project.meta.source) {
+      case 'pushed':
+        value = await fetchPushed(project.repo);
+        break;
+      case 'release':
+        value = await fetchReleaseTag(project.repo);
+        break;
+      case 'tag':
+        value = await fetchLatestTag(project.repo);
+        break;
+    }
     return { ok: true, value };
   } catch (err) {
     console.error(`fetch failed for ${project.repo}:`, err);
