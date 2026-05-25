@@ -23,7 +23,7 @@ export const projects: Project[] = [
     meta: { source: 'pushed' },
     name: 'sh',
     repo: 'j-256/sh',
-    desc: 'Shell utilities you run by piping the URL to bash; no install',
+    desc: 'Shell utilities you can run by piping the URL to bash; no install needed',
   },
   {
     perms: '-rwxr-xr-x',
