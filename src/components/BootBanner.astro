@@ -1,0 +1,37 @@
+---
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { siteHost } from '../lib/site-host';
+
+const banner = readFileSync(resolve(process.cwd(), 'src/data/banner.txt'), 'utf-8');
+const buildDate = new Date().toUTCString().replace(/^[A-Za-z]+, /, '');
+const SITE_HOST = siteHost();
+---
+<header class="boot" aria-label="Site header" data-host={SITE_HOST}>
+  <p class="login">Last login: <span class="login-date">{buildDate}</span> from <span class="login-from">a stranger</span></p>
+  <pre class="banner" aria-hidden="true">{banner}</pre>
+  <h1 class="wordmark">{SITE_HOST}</h1>
+  <p class="tagline">Tools, scripts, bookmarklets, and the occasional Cloudflare Worker.</p>
+</header>
+
+<style>
+  .boot {
+    margin-bottom: 2em;
+  }
+  .login, .tagline {
+    margin: 0.5em 0;
+  }
+  .banner {
+    margin: 0.5em 0;
+  }
+  @media (max-width: 599px) {
+    .banner { display: none; }
+    .boot::before {
+      content: attr(data-host);
+      display: block;
+      font-weight: 700;
+      font-size: 1.5em;
+      color: var(--fg-bright);
+    }
+  }
+</style>
