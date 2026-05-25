@@ -1,0 +1,148 @@
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #000000;
+  --fg: #1FB014;
+  --fg-dim: #166910;
+  --fg-bright: #29FE13;
+  --selection-bg: #1FB014;
+  --selection-fg: #000000;
+
+  --content-width: 80ch;
+  --pad-mobile: 1rem;
+  --pad-desktop: 2rem;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+}
+
+@media (min-width: 600px) {
+  html, body { font-size: 17px; }
+}
+
+@media (min-width: 1024px) {
+  html, body { font-size: 18px; }
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+
+main {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--pad-mobile);
+}
+
+@media (min-width: 600px) {
+  main { padding: var(--pad-desktop); }
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+a:hover, a:focus-visible {
+  color: var(--fg-bright);
+}
+
+a:visited {
+  color: inherit;
+}
+
+.prompt {
+  color: var(--fg-bright);
+  font-weight: 700;
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+.bright {
+  color: var(--fg-bright);
+}
+
+.banner {
+  white-space: pre;
+  font-weight: 700;
+  /* allow banner to break out of the 80ch column if needed */
+  max-width: 100vw;
+  overflow-x: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-link:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  background: var(--fg-bright);
+  color: var(--bg);
+  padding: 0.5rem 1rem;
+}
+
+.cursor {
+  display: inline-block;
+  background: var(--fg-bright);
+  width: 0.6em;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor { animation: none; }
+}
+
+.wordmark {
+  display: none;
+}
