@@ -10,8 +10,9 @@ export const GET: APIRoute = () => {
     <loc>${url}</loc>
     <lastmod>${lastmod}</lastmod>
   </url>
-</urlset>`;
+</urlset>
+`;
   return new Response(xml, {
-    headers: { 'Content-Type': 'application/xml' },
+    headers: { 'Content-Type': 'application/xml; charset=utf-8' },
   });
 };
