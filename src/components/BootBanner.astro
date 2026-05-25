@@ -11,7 +11,7 @@ const SITE_HOST = siteHost();
   <p class="login">Last login: <span class="login-date">{buildDate}</span> from <span class="login-from">a stranger</span></p>
   <pre class="banner" aria-hidden="true">{banner}</pre>
   <h1 class="wordmark">{SITE_HOST}</h1>
-  <p class="tagline">Tools, scripts, bookmarklets, and the occasional Cloudflare Worker.</p>
+  <p class="tagline">Builds what the situation calls for. Documents it for the next <span class="next-up"><span class="original">person</span><span class="alt" aria-hidden="true">agent</span>.</span></p>
 </header>
 
 <style>
@@ -23,6 +23,28 @@ const SITE_HOST = siteHost();
   }
   .banner {
     margin: 0.5em 0;
+  }
+  /* Cheeky hover swap: "person" -> "agent". Instant display toggle so the period reflows
+     tight against whichever word is showing. A crossfade would require both words to share
+     the longer slot, leaving a visible gap before the period; at any speed short enough to
+     not feel like an event the fade reads as flicker, so we don't bother. */
+  .alt { display: none; }
+  /* The period lives inside .next-up so hovering it triggers the swap (a sibling text node
+     would create flicker as hit-testing alternates between the span and the bare period).
+     When "agent" (5ch) replaces "person" (6ch), an extra 1ch of right-padding keeps the
+     hitbox visually identical regardless of which word is displayed. */
+  .next-up {
+    padding: 0.4em 0.55em;
+    margin: -0.4em -0.55em;
+  }
+  @media (hover: hover) {
+    .next-up { cursor: help; }
+    .next-up:hover {
+      padding-right: calc(0.55em + 1ch);
+      margin-right: calc(-0.55em - 1ch);
+    }
+    .next-up:hover .original { display: none; }
+    .next-up:hover .alt { display: inline; }
   }
   @media (max-width: 599px) {
     .banner { display: none; }
