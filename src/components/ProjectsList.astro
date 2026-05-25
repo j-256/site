@@ -32,23 +32,35 @@ const rows = projects.map(p => ({
 <ul class="projects" aria-label="Projects">
   {rows.map(row => (
     <li class="project-row">
-      <span class="row-prefix">{row.text}</span>
-      <a href={row.href}><span class="dim desc">{row.desc}</span></a>
+      <a href={row.href} class="row-link">
+        <span class="row-prefix">{row.text}</span>
+        <span class="dim desc">{row.desc}</span>
+      </a>
     </li>
   ))}
 </ul>
 
 <style>
-  .projects {
-    list-style: none;
-    padding: 0;
-  }
+  .projects { list-style: none; padding: 0; }
   .project-row {
     white-space: pre;
     padding: 0.25em 0;
   }
-  .desc { white-space: normal; }
+  .row-link {
+    display: block;
+    min-height: 44px;
+    text-decoration: none;
+  }
+  .row-link:hover .row-prefix,
+  .row-link:focus-visible .row-prefix { color: var(--fg-bright); }
+  .row-link:hover .desc,
+  .row-link:focus-visible .desc { color: var(--fg); }
+  .desc { white-space: normal; padding-left: 1ch; }
   @media (max-width: 599px) {
     .project-row { white-space: normal; }
+    .desc {
+      display: block;
+      padding-left: 4ch;
+    }
   }
 </style>
