@@ -8,6 +8,9 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
+    "write-cname": "tsx --env-file=.env scripts/write-cname.ts",
+    "prebuild": "npm run write-cname",
+    "predev": "npm run write-cname",
     "fetch-repo-meta": "tsx scripts/fetch-repo-meta.ts",
     "build": "npm run fetch-repo-meta && astro build",
     "preview": "astro preview",
