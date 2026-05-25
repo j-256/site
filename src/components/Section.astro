@@ -5,12 +5,20 @@ interface Props {
 const { command } = Astro.props;
 ---
 <section class="section">
-  <p class="prompt-line"><span class="prompt">$</span> {command}</p>
+  <p class="divider"><span class="prompt">$</span> <span class="cmd">{command}</span></p>
   <div class="body"><slot /></div>
 </section>
 
 <style>
   .section { margin-bottom: 2em; }
-  .prompt-line { margin-bottom: 0.5em; }
+  /* Section dividers are scaffolding, not content. Dim the whole line
+     (including $) and shrink it so it reads as a quiet label rather than
+     drawing the eye to terminal-isms. */
+  .divider {
+    margin-bottom: 0.5em;
+    font-size: 0.85em;
+    color: var(--fg-dim);
+  }
+  .divider .prompt { color: var(--fg-dim); font-weight: 400; }
   .body pre { white-space: pre-wrap; }
 </style>
