@@ -20,7 +20,6 @@ export const links: Link[] = [
     owner: 'jklein',
     group: 'staff',
     name: 'linkedin',
-    // TODO(user): replace <slug> with real LinkedIn slug before launch.
-    target: 'https://www.linkedin.com/in/<slug>',
+    target: 'https://www.linkedin.com/in/james-klein-developer',
   },
 ];

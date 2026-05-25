@@ -23,7 +23,7 @@ export const projects: Project[] = [
     meta: { source: 'pushed' },
     name: 'sh',
     repo: 'j-256/sh',
-    desc: 'Shell script library, served from the URL',
+    desc: 'Shell utilities you run by piping the URL to bash; no install',
   },
   {
     perms: '-rwxr-xr-x',
@@ -32,7 +32,7 @@ export const projects: Project[] = [
     meta: 'stable',
     name: 'rover-dumper',
     repo: 'j-256/rover-dumper',
-    desc: 'Bookmarklet: bulk-download Rover.com pet photos',
+    desc: "Bookmarklet: download every photo of your pet from Rover.com as a zip",
   },
   {
     perms: 'drwxr-xr-x',
@@ -41,7 +41,7 @@ export const projects: Project[] = [
     meta: { source: 'pushed' },
     name: 'claude-code-skills',
     repo: 'j-256/claude-code-skills',
-    desc: 'Public skills for Claude Code',
+    desc: 'Claude Code skills + eval harness; three of them target the Salesforce dev docs',
   },
   {
     perms: '-rwxr-xr-x',
@@ -50,7 +50,7 @@ export const projects: Project[] = [
     meta: { source: 'pushed' },
     name: 'ccam',
     repo: 'j-256/ccam',
-    desc: 'TS CLI + SDK for Salesforce Commerce Cloud Account Manager',
+    desc: 'TypeScript CLI and SDK for the Commerce Cloud Account Manager API (and its reference implementation, since the API is undocumented)',
   },
   {
     perms: 'drwxr-xr-x',
@@ -59,7 +59,7 @@ export const projects: Project[] = [
     meta: { source: 'release' },
     name: 'git-crypt-vscode',
     repo: 'j-256/git-crypt-vscode',
-    desc: 'VSCode: make git-crypt repos work in Source Control',
+    desc: "VSCode extension that keeps git-crypt'd repos from breaking the Source Control panel",
   },
   {
     perms: 'drwxr-xr-x',
@@ -68,7 +68,7 @@ export const projects: Project[] = [
     meta: 'stable',
     name: 'qlomni',
     repo: 'j-256/qlomni',
-    desc: 'macOS QuickLook for the text files macOS forgets',
+    desc: "macOS QuickLook extension for the text files macOS itself won't preview",
   },
   {
     perms: 'drwxr-xr-x',
@@ -77,7 +77,7 @@ export const projects: Project[] = [
     meta: 'stable',
     name: 'plugin_rootfile',
     repo: 'j-256/plugin_rootfile',
-    desc: 'SFCC cartridge: serve static files from any URI',
+    desc: 'SFCC B2C cartridge: serve static files from any path, including the apex',
   },
   {
     perms: 'drwxr-xr-x',
