@@ -18,23 +18,23 @@ function resolveMeta(p: Project): string {
 
 const rows = projects.map(p => ({
   href: `https://github.com/${p.repo}`,
-  desc: p.desc,
-  text: formatLsRow({
+  prefix: formatLsRow({
     perms: p.perms,
     owner: p.owner,
     group: p.group,
     meta: resolveMeta(p),
     name: p.name,
     desc: '',
-  }),
+  }).trimEnd(),
+  desc: p.desc,
 }));
 ---
-<ul class="projects" aria-label="Projects">
+<ul class="projects wide-rows" aria-label="Projects">
   {rows.map(row => (
     <li class="project-row">
-      <a href={row.href} class="row-link">
-        <span class="row-prefix">{row.text}</span>
-        <span class="dim desc">{row.desc}</span>
+      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer">
+        <span class="prefix">{row.prefix}</span>
+        <span class="annotation"># {row.desc}</span>
       </a>
     </li>
   ))}
@@ -42,25 +42,24 @@ const rows = projects.map(p => ({
 
 <style>
   .projects { list-style: none; padding: 0; }
-  .project-row {
-    white-space: pre;
-    padding: 0.25em 0;
-  }
+  .project-row { padding: 0.125em 0 0.5em; }
   .row-link {
     display: block;
-    min-height: 44px;
     text-decoration: none;
+    min-height: 44px;
   }
-  .row-link:hover .row-prefix,
-  .row-link:focus-visible .row-prefix { color: var(--fg-bright); }
-  .row-link:hover .desc,
-  .row-link:focus-visible .desc { color: var(--fg); }
-  .desc { white-space: normal; padding-left: 1ch; }
-  @media (max-width: 599px) {
-    .project-row { white-space: normal; }
-    .desc {
-      display: block;
-      padding-left: 4ch;
-    }
+  .prefix {
+    display: block;
+    white-space: pre;
+    overflow-x: auto;
   }
+  .annotation {
+    display: block;
+    color: var(--fg-dim);
+    padding-left: 2ch;
+  }
+  .row-link:hover .prefix,
+  .row-link:focus-visible .prefix { color: var(--fg-bright); }
+  .row-link:hover .annotation,
+  .row-link:focus-visible .annotation { color: var(--fg); }
 </style>

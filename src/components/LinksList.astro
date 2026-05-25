@@ -1,23 +1,22 @@
 ---
 import { links } from '../data/links';
-import { formatLsRow } from '../lib/format';
+import { formatSymlinkRow } from '../lib/format';
 
 const rows = links.map(l => ({
   href: l.target,
-  text: formatLsRow({
+  text: formatSymlinkRow({
     perms: l.perms,
     owner: l.owner,
     group: l.group,
-    meta: '',
     name: l.name,
-    desc: `-> ${l.target.replace(/^https:\/\//, '')}`,
+    target: l.target.replace(/^https:\/\/(www\.)?/, ''),
   }),
 }));
 ---
-<ul class="links" aria-label="Links">
+<ul class="links wide-rows" aria-label="Links">
   {rows.map(row => (
     <li class="link-row">
-      <a href={row.href} class="row-link">
+      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer">
         <span class="row-prefix">{row.text}</span>
       </a>
     </li>
@@ -26,18 +25,14 @@ const rows = links.map(l => ({
 
 <style>
   .links { list-style: none; padding: 0; }
-  .link-row {
-    white-space: pre;
-    padding: 0.25em 0;
-  }
+  .link-row { padding: 0.125em 0; }
   .row-link {
     display: block;
     min-height: 44px;
     text-decoration: none;
+    white-space: pre;
+    overflow-x: auto;
   }
   .row-link:hover .row-prefix,
   .row-link:focus-visible .row-prefix { color: var(--fg-bright); }
-  @media (max-width: 599px) {
-    .link-row { white-space: normal; }
-  }
 </style>
