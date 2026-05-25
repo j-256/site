@@ -1,0 +1,16 @@
+---
+interface Props {
+  command: string;
+}
+const { command } = Astro.props;
+---
+<section class="section">
+  <p class="prompt-line"><span class="prompt">$</span> {command}</p>
+  <div class="body"><slot /></div>
+</section>
+
+<style>
+  .section { margin-bottom: 2em; }
+  .prompt-line { margin-bottom: 0.5em; }
+  .body pre { white-space: pre-wrap; }
+</style>
