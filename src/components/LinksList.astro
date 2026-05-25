@@ -1,0 +1,43 @@
+---
+import { links } from '../data/links';
+import { formatLsRow } from '../lib/format';
+
+const rows = links.map(l => ({
+  href: l.target,
+  text: formatLsRow({
+    perms: l.perms,
+    owner: l.owner,
+    group: l.group,
+    meta: '',
+    name: l.name,
+    desc: `-> ${l.target.replace(/^https:\/\//, '')}`,
+  }),
+}));
+---
+<ul class="links" aria-label="Links">
+  {rows.map(row => (
+    <li class="link-row">
+      <a href={row.href} class="row-link">
+        <span class="row-prefix">{row.text}</span>
+      </a>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .links { list-style: none; padding: 0; }
+  .link-row {
+    white-space: pre;
+    padding: 0.25em 0;
+  }
+  .row-link {
+    display: block;
+    min-height: 44px;
+    text-decoration: none;
+  }
+  .row-link:hover .row-prefix,
+  .row-link:focus-visible .row-prefix { color: var(--fg-bright); }
+  @media (max-width: 599px) {
+    .link-row { white-space: normal; }
+  }
+</style>
