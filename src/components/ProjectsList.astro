@@ -32,13 +32,26 @@ const rows = projects.map(p => ({
 <ul class="projects wide-rows" aria-label="Projects">
   {rows.map(row => (
     <li class="project-row">
-      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer">
+      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer" draggable="false">
         <span class="prefix">{row.prefix}</span>
         <span class="annotation"># {row.desc}</span>
       </a>
     </li>
   ))}
 </ul>
+
+<script is:inline>
+  // Selecting text inside a full-row <a> still fires click on mouseup, which
+  // navigates away. Cancel the click when a non-empty selection exists.
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest && e.target.closest('.row-link');
+    if (!link) return;
+    var sel = window.getSelection();
+    if (sel && sel.toString().length > 0) {
+      e.preventDefault();
+    }
+  });
+</script>
 
 <style>
   .projects { list-style: none; padding: 0; }
@@ -57,6 +70,9 @@ const rows = projects.map(p => ({
     display: block;
     color: var(--fg-dim);
     padding-left: 2ch;
+    /* Wrap at the prose column even though the row container extends wider. */
+    max-width: var(--content-width);
+    user-select: text;
   }
   .row-link:hover .prefix,
   .row-link:focus-visible .prefix { color: var(--fg-bright); }
