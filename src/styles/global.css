@@ -74,6 +74,20 @@ a:visited {
   color: inherit;
 }
 
+.wide-rows {
+  /* Allow rows to extend past the prose column to the right edge of the viewport,
+     while keeping their left edge aligned with the prose column. Each row that
+     overflows scrolls horizontally within itself. */
+  max-width: none;
+  width: calc(50vw + var(--content-width) / 2 - var(--pad-desktop));
+}
+
+@media (max-width: 599px) {
+  .wide-rows {
+    width: calc(100vw - 2 * var(--pad-mobile));
+  }
+}
+
 .prompt {
   color: var(--fg-bright);
   font-weight: 700;
