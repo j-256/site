@@ -7,12 +7,16 @@ const banner = readFileSync(resolve(process.cwd(), 'src/data/banner.txt'), 'utf-
 const buildDate = new Date().toUTCString().replace(/^[A-Za-z]+, /, '');
 const SITE_HOST = siteHost();
 ---
-<header class="boot" aria-label="Site header" data-host={SITE_HOST}>
-  <p class="login">Last login: <span class="login-date">{buildDate}</span> from <span class="login-from">a stranger</span></p>
-  <pre class="banner" aria-hidden="true">{banner}</pre>
+<header class="boot" aria-label="Site header" data-boot data-host={SITE_HOST}>
+  <p class="login" data-boot-line>Last login: <span class="login-date">{buildDate}</span> from <span class="login-from" data-from>a stranger</span></p>
+  <pre class="banner" aria-hidden="true" data-boot-line>{banner}</pre>
   <h1 class="wordmark">{SITE_HOST}</h1>
-  <p class="tagline">Builds what the situation calls for. Documents it for the next <span class="next-up"><span class="original">person</span><span class="alt" aria-hidden="true">agent</span>.</span></p>
+  <p class="tagline" data-boot-line>Builds what the situation calls for. Documents it for the next <span class="next-up"><span class="original">person</span><span class="alt" aria-hidden="true">agent</span>.</span></p>
 </header>
+
+<script>
+  import '../scripts/boot';
+</script>
 
 <style>
   .boot {
