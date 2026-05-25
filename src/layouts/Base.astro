@@ -1,12 +1,17 @@
 ---
 import '../styles/global.css';
 import { siteHost, siteUrl } from '../lib/site-host';
+import { links } from '../data/links';
 
 const SITE_HOST = siteHost();
 const SITE_URL = siteUrl();
 
 const TITLE = `James Klein - ${SITE_HOST}`;
-const DESCRIPTION = 'James Klein: tools, scripts, bookmarklets, and the occasional Cloudflare Worker. Principal Support Engineer @ Salesforce B2C Commerce.';
+const DESCRIPTION = 'James Klein: builds what the situation calls for, documents it for the next person. Principal Support Engineer @ Salesforce B2C Commerce.';
+
+const sameAs = links
+  .map(l => l.target)
+  .filter(t => /^https?:\/\//.test(t));
 
 const buildDate = new Date().toISOString();
 ---
@@ -43,9 +48,7 @@ const buildDate = new Date().toISOString();
     jobTitle: 'Principal Support Engineer',
     worksFor: { '@type': 'Organization', name: 'Salesforce' },
     url: SITE_URL,
-    sameAs: [
-      'https://github.com/j-256',
-    ],
+    sameAs,
   })} />
 </head>
 <body>
