@@ -1,0 +1,54 @@
+---
+import { projects, type Project, type MetaSource } from '../data/projects';
+import cache from '../data/repo-meta.cache.json';
+import { formatLsRow } from '../lib/format';
+
+function isMetaSource(meta: Project['meta']): meta is MetaSource {
+  return typeof meta === 'object' && meta !== null && 'source' in meta;
+}
+
+function resolveMeta(p: Project): string {
+  if (!isMetaSource(p.meta)) return p.meta;
+  const entry = (cache as Record<string, { value: string; fetchedAt: string }>)[p.repo];
+  if (!entry) {
+    throw new Error(`No cache entry for ${p.repo}; run npm run fetch-repo-meta`);
+  }
+  return entry.value;
+}
+
+const rows = projects.map(p => ({
+  href: `https://github.com/${p.repo}`,
+  desc: p.desc,
+  text: formatLsRow({
+    perms: p.perms,
+    owner: p.owner,
+    group: p.group,
+    meta: resolveMeta(p),
+    name: p.name,
+    desc: '',
+  }),
+}));
+---
+<ul class="projects" aria-label="Projects">
+  {rows.map(row => (
+    <li class="project-row">
+      <span class="row-prefix">{row.text}</span>
+      <a href={row.href}><span class="dim desc">{row.desc}</span></a>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .projects {
+    list-style: none;
+    padding: 0;
+  }
+  .project-row {
+    white-space: pre;
+    padding: 0.25em 0;
+  }
+  .desc { white-space: normal; }
+  @media (max-width: 599px) {
+    .project-row { white-space: normal; }
+  }
+</style>
