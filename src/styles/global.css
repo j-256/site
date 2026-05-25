@@ -16,10 +16,10 @@
 
 :root {
   --bg: #000000;
-  --fg: #1FB014;
-  --fg-dim: #166910;
+  --fg: #26C916;
+  --fg-dim: #1A8113;
   --fg-bright: #29FE13;
-  --selection-bg: #1FB014;
+  --selection-bg: #26C916;
   --selection-fg: #000000;
 
   --content-width: 80ch;
