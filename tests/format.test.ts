@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatLsRow } from '../src/lib/format';
+import { formatLsRow, formatSymlinkRow } from '../src/lib/format';
 
 describe('formatLsRow', () => {
   it('formats a project row with all columns aligned', () => {
@@ -39,18 +39,30 @@ describe('formatLsRow', () => {
     });
     expect(row).toMatch(/sh {18}Shell/);
   });
+});
 
-  it('formats a symlink row with arrow', () => {
-    const row = formatLsRow({
+describe('formatSymlinkRow', () => {
+  it('formats a symlink with no meta column and a 10-wide name', () => {
+    const row = formatSymlinkRow({
       perms: 'lrwxr-xr-x',
       owner: 'jklein',
       group: 'staff',
-      meta: '',
       name: 'github',
-      desc: '-> github.com/j-256',
+      target: 'github.com/j-256',
     });
     expect(row).toBe(
-      'lrwxr-xr-x  jklein  staff              github              -> github.com/j-256'
+      'lrwxr-xr-x  jklein  staff  github      -> github.com/j-256'
     );
+  });
+
+  it('does not pad names that exceed the symlink name width', () => {
+    const row = formatSymlinkRow({
+      perms: 'lrwxr-xr-x',
+      owner: 'jklein',
+      group: 'staff',
+      name: 'really-long-link-name',
+      target: 'example.com',
+    });
+    expect(row).toMatch(/really-long-link-name  -> example/);
   });
 });
