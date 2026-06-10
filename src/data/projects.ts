@@ -4,6 +4,7 @@ export type MetaSource =
   | { source: 'tag' };
 
 export interface Project {
+  /** ls-style mode string. Leading char by artifact shape: `-` for a single runnable thing (script, CLI, bookmarklet), `d` for a bundle/tree (extension, cartridge, collection). */
   perms: string;
   owner: string;
   group: string;
