@@ -5,7 +5,10 @@ import {
   parsePushedAt,
   parseReleaseTag,
   parseTagNames,
+  classifyRow,
+  renderSummary,
   type CacheEntry,
+  type SummaryRow,
 } from '../scripts/fetch-repo-meta';
 
 const NOW = new Date('2026-05-23T12:00:00Z');
@@ -189,5 +192,109 @@ describe('parseTagNames', () => {
 
   it('throws when an element is missing a name', () => {
     expect(() => parseTagNames([{ name: 'v1.0.0' }, {} as never])).toThrow(/name/);
+  });
+});
+
+describe('classifyRow', () => {
+  const base = { repo: 'j-256/x', source: 'release' as const };
+  // A fresh-fetch success carries a cacheUpdate; a cache fallback carries only a
+  // value (+warning); an error carries neither value nor cacheUpdate. These
+  // mirror resolveMeta's actual output contract.
+  const freshOk = (value: string) => ({ value, cacheUpdate: { value, fetchedAt: NOW.toISOString() } });
+
+  it('marks a fetched value that differs from cache as updated', () => {
+    const row = classifyRow({ ...base, previous: 'v1.0.0', result: freshOk('v1.1.0') });
+    expect(row.status).toBe('updated');
+    expect(row.previous).toBe('v1.0.0');
+    expect(row.current).toBe('v1.1.0');
+  });
+
+  it('marks a fetched value equal to cache as unchanged', () => {
+    const row = classifyRow({ ...base, previous: 'v1.0.0', result: freshOk('v1.0.0') });
+    expect(row.status).toBe('unchanged');
+  });
+
+  it('marks a value with no prior cache entry as added', () => {
+    const row = classifyRow({ ...base, previous: undefined, result: freshOk('v1.0.0') });
+    expect(row.status).toBe('added');
+    expect(row.previous).toBeUndefined();
+    expect(row.current).toBe('v1.0.0');
+  });
+
+  it('marks a fallback (value without a cacheUpdate) as cache', () => {
+    const row = classifyRow({
+      ...base,
+      previous: 'v1.0.0',
+      result: { value: 'v1.0.0', warning: 'fell back' },
+    });
+    expect(row.status).toBe('cache');
+    expect(row.current).toBe('v1.0.0');
+  });
+
+  it('marks a result with no value as error', () => {
+    const row = classifyRow({ ...base, previous: undefined, result: { error: 'boom' } });
+    expect(row.status).toBe('error');
+    expect(row.current).toBeUndefined();
+  });
+
+  // The whole point of threading resolveMeta's output through: classifyRow must
+  // never claim a cache fallback that resolveMeta actually rejected as stale.
+  it('agrees with resolveMeta: a stale cache + failed fetch is error, not cache', () => {
+    const staleCache: CacheEntry = { value: 'v1.0.0', fetchedAt: fresh(20) };
+    const result = resolveMeta({ key: 'j-256/x', fresh: { ok: false }, cache: staleCache, now: NOW });
+    const row = classifyRow({ ...base, previous: staleCache.value, result });
+    expect(result.error).toBeDefined();
+    expect(row.status).toBe('error');
+    expect(row.current).toBeUndefined();
+  });
+
+  it('agrees with resolveMeta: a fresh-enough cache + failed fetch is cache', () => {
+    const okCache: CacheEntry = { value: 'v1.0.0', fetchedAt: fresh(3) };
+    const result = resolveMeta({ key: 'j-256/x', fresh: { ok: false }, cache: okCache, now: NOW });
+    const row = classifyRow({ ...base, previous: okCache.value, result });
+    expect(result.value).toBe('v1.0.0');
+    expect(row.status).toBe('cache');
+    expect(row.current).toBe('v1.0.0');
+  });
+});
+
+describe('renderSummary', () => {
+  const rows: SummaryRow[] = [
+    { repo: 'j-256/sh', source: 'pushed', previous: '2026-05-14', current: '2026-06-08', status: 'updated' },
+    { repo: 'j-256/ccam', source: 'release', previous: 'v0.1.1', current: 'v0.1.1', status: 'unchanged' },
+    { repo: 'j-256/new', source: 'tag', previous: undefined, current: 'v1.0.0', status: 'added' },
+    { repo: 'j-256/down', source: 'release', previous: 'v2.0.0', current: 'v2.0.0', status: 'cache' },
+  ];
+
+  it('renders a markdown table with a header and one row per project', () => {
+    const md = renderSummary(rows);
+    expect(md).toMatch(/^### Repo metadata/m);
+    expect(md).toMatch(/\| Project \| Source \| Previous \| Current \| Status \|/);
+    expect(md.match(/^\| j-256\//gm)).toHaveLength(4);
+  });
+
+  it('shows the old to new transition for an updated row', () => {
+    const md = renderSummary(rows);
+    expect(md).toMatch(/j-256\/sh.*pushed.*2026-05-14.*2026-06-08.*updated/);
+  });
+
+  it('summarizes counts in a roll-up line', () => {
+    const md = renderSummary(rows);
+    expect(md).toMatch(/1 updated/);
+    expect(md).toMatch(/1 added/);
+    expect(md).toMatch(/1 unchanged/);
+    expect(md).toMatch(/1 from cache/);
+  });
+
+  it('renders a dash for an absent previous value', () => {
+    const md = renderSummary([rows[2]]);
+    expect(md).toMatch(/j-256\/new \| tag \| - \| v1.0.0/);
+  });
+
+  it('renders a dash placeholder for a missing current value on error', () => {
+    const md = renderSummary([
+      { repo: 'j-256/gone', source: 'release', previous: undefined, current: undefined, status: 'error' },
+    ]);
+    expect(md).toMatch(/j-256\/gone \| release \| - \| - \| .*ERROR/);
   });
 });

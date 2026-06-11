@@ -24,6 +24,28 @@ export interface ResolveOutput {
   error?: string;
 }
 
+export type MetaSourceKind = 'pushed' | 'release' | 'tag';
+
+export type RowStatus = 'added' | 'updated' | 'unchanged' | 'cache' | 'error';
+
+export interface SummaryRow {
+  repo: string;
+  source: MetaSourceKind;
+  /** Value in the committed cache before this run (undefined if the repo was never cached). */
+  previous?: string;
+  /** Value after this run (undefined only when fetch failed and no cache could cover it). */
+  current?: string;
+  status: RowStatus;
+}
+
+export interface ClassifyInput {
+  repo: string;
+  source: MetaSourceKind;
+  previous?: string;
+  /** resolveMeta's verdict for this repo. The row is derived from this, never recomputed. */
+  result: ResolveOutput;
+}
+
 // Two weeks: one missed weekly cron plus a transient fetch blip must not be
 // enough to hard-fail a build. The committed cache is only a fallback anyway.
 const STALENESS_DAYS = 14;
@@ -191,6 +213,78 @@ export function parseTagNames(body: unknown): string[] {
   });
 }
 
+/**
+ * Decide how a single project's run turned out. Derived entirely from
+ * resolveMeta's output so the summary can never disagree with what the build
+ * actually did (e.g. claim a cache fallback that resolveMeta rejected as stale):
+ *   - no value            -> error (build fails, nothing shipped)
+ *   - value + cacheUpdate  -> a fresh fetch succeeded (added / unchanged / updated)
+ *   - value, no cacheUpdate -> a within-window cache fallback
+ * Pure: the build-summary table is built from these.
+ */
+export function classifyRow(input: ClassifyInput): SummaryRow {
+  const { repo, source, previous, result } = input;
+  const base = { repo, source, previous };
+
+  if (result.value === undefined) {
+    return { ...base, current: undefined, status: 'error' };
+  }
+  const current = result.value;
+  if (!result.cacheUpdate) {
+    return { ...base, current, status: 'cache' };
+  }
+  if (previous === undefined) return { ...base, current, status: 'added' };
+  if (previous === current) return { ...base, current, status: 'unchanged' };
+  return { ...base, current, status: 'updated' };
+}
+
+const STATUS_LABEL: Record<RowStatus, string> = {
+  added: 'added',
+  updated: 'updated',
+  unchanged: 'unchanged',
+  cache: 'from cache (fetch failed)',
+  error: 'ERROR (no value)',
+};
+
+/** Render the per-project results as a GitHub step-summary markdown block. */
+export function renderSummary(rows: SummaryRow[]): string {
+  const dash = (v: string | undefined): string => (v === undefined || v === '' ? '-' : v);
+
+  const lines = [
+    '### Repo metadata',
+    '',
+    '| Project | Source | Previous | Current | Status |',
+    '| --- | --- | --- | --- | --- |',
+  ];
+  for (const r of rows) {
+    lines.push(
+      `| ${r.repo} | ${r.source} | ${dash(r.previous)} | ${dash(r.current)} | ${STATUS_LABEL[r.status]} |`
+    );
+  }
+
+  const counts: Record<RowStatus, number> = {
+    added: 0,
+    updated: 0,
+    unchanged: 0,
+    cache: 0,
+    error: 0,
+  };
+  for (const r of rows) counts[r.status]++;
+
+  // Roll-up: only mention non-zero buckets, but always show updated/added so a
+  // quiet run still reads as a positive "nothing changed" rather than blank.
+  const parts = [
+    `${counts.updated} updated`,
+    `${counts.added} added`,
+    `${counts.unchanged} unchanged`,
+  ];
+  if (counts.cache > 0) parts.push(`${counts.cache} from cache`);
+  if (counts.error > 0) parts.push(`${counts.error} error`);
+
+  lines.push('', `**${rows.length} project(s):** ${parts.join(', ')}.`);
+  return lines.join('\n');
+}
+
 async function ghFetch<T>(url: string): Promise<T> {
   const res = await fetch(url, {
     headers: {
@@ -261,10 +355,13 @@ async function main(): Promise<void> {
   const cache: Record<string, { value: string; fetchedAt: string }> = JSON.parse(cacheRaw);
   const now = new Date();
   const errors: string[] = [];
+  const rows: SummaryRow[] = [];
 
   for (const project of projects) {
     if (!isMetaSource(project.meta)) continue;
 
+    // Capture the prior value before resolveMeta mutates the cache below.
+    const previous = cache[project.repo]?.value;
     const fresh = await tryFetch(project);
     const result = resolveMeta({
       key: project.repo,
@@ -273,12 +370,13 @@ async function main(): Promise<void> {
       now,
     });
 
+    rows.push(classifyRow({ repo: project.repo, source: project.meta.source, previous, result }));
+
     if (result.cacheUpdate) {
       cache[project.repo] = result.cacheUpdate;
     }
     if (result.warning) {
       console.log(`::warning file=scripts/fetch-repo-meta.ts::${result.warning}`);
-      await emitSummary(`- WARN ${result.warning}`);
     }
     if (result.error) {
       console.log(`::error file=scripts/fetch-repo-meta.ts::${result.error}`);
@@ -287,6 +385,7 @@ async function main(): Promise<void> {
   }
 
   await writeFile(CACHE_PATH, JSON.stringify(cache, null, 2) + '\n');
+  await emitSummary(renderSummary(rows));
 
   if (errors.length > 0) {
     console.error(`fetch-repo-meta failed: ${errors.length} error(s)`);
