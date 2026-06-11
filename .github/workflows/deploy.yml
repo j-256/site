@@ -9,10 +9,10 @@ on:
     - cron: '0 6 * * 0'
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+# Least privilege, scoped per job: build only reads the repo, deploy talks to
+# Pages. The weekly cron redeploys so the live site picks up fresh upstream
+# metadata even without a push (the build always fetches it fresh).
+permissions: {}
 
 concurrency:
   group: pages
@@ -24,6 +24,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
@@ -48,6 +50,9 @@ jobs:
     if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
