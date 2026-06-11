@@ -6,6 +6,7 @@ import {
   parseReleaseTag,
   parseTagNames,
   classifyRow,
+  staticRow,
   renderSummary,
   type CacheEntry,
   type SummaryRow,
@@ -234,24 +235,41 @@ describe('classifyRow', () => {
   });
 });
 
+describe('staticRow', () => {
+  it('represents a literal-meta project with a static source and status', () => {
+    const row = staticRow({ repo: 'j-256/plugin_rootfile', value: 'stable' });
+    expect(row.source).toBe('static');
+    expect(row.status).toBe('static');
+    expect(row.current).toBe('stable');
+    // No fetch happened, so there is no prior-versus-current transition.
+    expect(row.previous).toBeUndefined();
+  });
+});
+
 describe('renderSummary', () => {
   const rows: SummaryRow[] = [
     { repo: 'j-256/sh', source: 'pushed', previous: '2026-05-14', current: '2026-06-08', status: 'updated' },
     { repo: 'j-256/ccam', source: 'release', previous: 'v0.1.1', current: 'v0.1.1', status: 'unchanged' },
     { repo: 'j-256/new', source: 'tag', previous: undefined, current: 'v1.0.0', status: 'added' },
     { repo: 'j-256/down', source: 'release', previous: 'v2.0.0', current: 'v2.0.0', status: 'cache' },
+    { repo: 'j-256/pinned', source: 'static', previous: undefined, current: 'stable', status: 'static' },
   ];
 
   it('renders a markdown table with a header and one row per project', () => {
     const md = renderSummary(rows);
     expect(md).toMatch(/^### Repo metadata/m);
     expect(md).toMatch(/\| Project \| Source \| Previous \| Current \| Status \|/);
-    expect(md.match(/^\| j-256\//gm)).toHaveLength(4);
+    expect(md.match(/^\| j-256\//gm)).toHaveLength(5);
   });
 
   it('shows the old to new transition for an updated row', () => {
     const md = renderSummary(rows);
     expect(md).toMatch(/j-256\/sh.*pushed.*2026-05-14.*2026-06-08.*updated/);
+  });
+
+  it('renders a static (literal-meta) row', () => {
+    const md = renderSummary(rows);
+    expect(md).toMatch(/j-256\/pinned \| static \| - \| stable \| .*static/);
   });
 
   it('summarizes counts in a roll-up line', () => {
@@ -260,6 +278,7 @@ describe('renderSummary', () => {
     expect(md).toMatch(/1 added/);
     expect(md).toMatch(/1 unchanged/);
     expect(md).toMatch(/1 from cache/);
+    expect(md).toMatch(/1 static/);
   });
 
   it('renders a dash for an absent previous value', () => {

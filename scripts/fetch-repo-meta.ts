@@ -24,9 +24,12 @@ export interface ResolveOutput {
   error?: string;
 }
 
-export type MetaSourceKind = 'pushed' | 'release' | 'tag';
+// 'static' covers projects whose meta is a literal string in projects.ts: they
+// are never fetched, so they get their own source/status in the summary rather
+// than being silently omitted.
+export type MetaSourceKind = 'pushed' | 'release' | 'tag' | 'static';
 
-export type RowStatus = 'added' | 'updated' | 'unchanged' | 'cache' | 'error';
+export type RowStatus = 'added' | 'updated' | 'unchanged' | 'cache' | 'error' | 'static';
 
 export interface SummaryRow {
   repo: string;
@@ -232,12 +235,22 @@ export function classifyRow(input: ClassifyInput): SummaryRow {
   return { ...base, current, status: 'updated' };
 }
 
+/**
+ * Build a row for a literal-meta project (e.g. meta: 'stable'). These are never
+ * fetched, so there is no previous-versus-current transition: the value is
+ * pinned in projects.ts and shown verbatim.
+ */
+export function staticRow(input: { repo: string; value: string }): SummaryRow {
+  return { repo: input.repo, source: 'static', current: input.value, status: 'static' };
+}
+
 const STATUS_LABEL: Record<RowStatus, string> = {
   added: 'added',
   updated: 'updated',
   unchanged: 'unchanged',
   cache: 'from cache (fetch failed)',
   error: 'ERROR (no value)',
+  static: 'static (pinned)',
 };
 
 /** Render the per-project results as a GitHub step-summary markdown block. */
@@ -262,6 +275,7 @@ export function renderSummary(rows: SummaryRow[]): string {
     unchanged: 0,
     cache: 0,
     error: 0,
+    static: 0,
   };
   for (const r of rows) counts[r.status]++;
 
@@ -274,6 +288,7 @@ export function renderSummary(rows: SummaryRow[]): string {
   ];
   if (counts.cache > 0) parts.push(`${counts.cache} from cache`);
   if (counts.error > 0) parts.push(`${counts.error} error`);
+  if (counts.static > 0) parts.push(`${counts.static} static`);
 
   lines.push('', `**${rows.length} project(s):** ${parts.join(', ')}.`);
   return lines.join('\n');
@@ -352,7 +367,12 @@ async function main(): Promise<void> {
   const rows: SummaryRow[] = [];
 
   for (const project of projects) {
-    if (!isMetaSource(project.meta)) continue;
+    // Literal-meta projects are never fetched; surface them as static rows
+    // rather than dropping them from the summary.
+    if (!isMetaSource(project.meta)) {
+      rows.push(staticRow({ repo: project.repo, value: project.meta }));
+      continue;
+    }
 
     // Capture the prior value before resolveMeta mutates the cache below.
     const previous = cache[project.repo]?.value;
