@@ -32,7 +32,7 @@ describe('resolveMeta', () => {
     });
   });
 
-  it('falls back to fresh cache (<=7 days old) with a warning on fetch failure', () => {
+  it('falls back to cache with a warning on fetch failure', () => {
     const cache: CacheEntry = { value: '2026-05-19', fetchedAt: fresh(3) };
     const result = resolveMeta({
       key: 'j-256/sh',
@@ -47,28 +47,18 @@ describe('resolveMeta', () => {
     expect(result.cacheUpdate).toBeUndefined();
   });
 
-  it('returns an error result for stale cache (>14 days) on fetch failure', () => {
-    const cache: CacheEntry = { value: '2026-05-01', fetchedAt: fresh(15) };
+  it('falls back to an arbitrarily old cache without erroring (staleness is advisory)', () => {
+    // A stale fallback never breaks a build; the live build always fetches
+    // fresh, so the committed cache only surfaces during a fetch failure.
+    const cache: CacheEntry = { value: '2026-01-01', fetchedAt: fresh(120) };
     const result = resolveMeta({
       key: 'j-256/sh',
       fresh: { ok: false },
       cache,
       now: NOW,
     });
-    expect(result.value).toBeUndefined();
-    expect(result.error).toMatch(/Cache for j-256\/sh is 15 days old/);
-  });
-
-  it('still falls back to cache at 10 days old (within the 14-day window)', () => {
-    const cache: CacheEntry = { value: '2026-05-13', fetchedAt: fresh(10) };
-    const result = resolveMeta({
-      key: 'j-256/sh',
-      fresh: { ok: false },
-      cache,
-      now: NOW,
-    });
-    expect(result.value).toBe('2026-05-13');
-    expect(result.warning).toMatch(/10 days/);
+    expect(result.value).toBe('2026-01-01');
+    expect(result.warning).toMatch(/120 days/);
     expect(result.error).toBeUndefined();
   });
 
@@ -81,19 +71,6 @@ describe('resolveMeta', () => {
     });
     expect(result.value).toBeUndefined();
     expect(result.error).toMatch(/No cache entry for j-256\/sh/);
-  });
-
-  it('treats exactly-14-days as still fresh (boundary)', () => {
-    const cache: CacheEntry = { value: 'x', fetchedAt: fresh(14) };
-    const result = resolveMeta({
-      key: 'j-256/sh',
-      fresh: { ok: false },
-      cache,
-      now: NOW,
-    });
-    expect(result.value).toBe('x');
-    expect(result.warning).toBeDefined();
-    expect(result.error).toBeUndefined();
   });
 });
 
@@ -237,24 +214,23 @@ describe('classifyRow', () => {
     expect(row.current).toBeUndefined();
   });
 
-  // The whole point of threading resolveMeta's output through: classifyRow must
-  // never claim a cache fallback that resolveMeta actually rejected as stale.
-  it('agrees with resolveMeta: a stale cache + failed fetch is error, not cache', () => {
-    const staleCache: CacheEntry = { value: 'v1.0.0', fetchedAt: fresh(20) };
+  // The point of threading resolveMeta's output through: the row reflects what
+  // the resolver actually did, never a recomputed guess.
+  it('agrees with resolveMeta: any cache + failed fetch is a cache fallback', () => {
+    const staleCache: CacheEntry = { value: 'v1.0.0', fetchedAt: fresh(120) };
     const result = resolveMeta({ key: 'j-256/x', fresh: { ok: false }, cache: staleCache, now: NOW });
     const row = classifyRow({ ...base, previous: staleCache.value, result });
-    expect(result.error).toBeDefined();
-    expect(row.status).toBe('error');
-    expect(row.current).toBeUndefined();
-  });
-
-  it('agrees with resolveMeta: a fresh-enough cache + failed fetch is cache', () => {
-    const okCache: CacheEntry = { value: 'v1.0.0', fetchedAt: fresh(3) };
-    const result = resolveMeta({ key: 'j-256/x', fresh: { ok: false }, cache: okCache, now: NOW });
-    const row = classifyRow({ ...base, previous: okCache.value, result });
     expect(result.value).toBe('v1.0.0');
     expect(row.status).toBe('cache');
     expect(row.current).toBe('v1.0.0');
+  });
+
+  it('agrees with resolveMeta: a failed fetch with no cache is error', () => {
+    const result = resolveMeta({ key: 'j-256/x', fresh: { ok: false }, cache: undefined, now: NOW });
+    const row = classifyRow({ ...base, previous: undefined, result });
+    expect(result.error).toBeDefined();
+    expect(row.status).toBe('error');
+    expect(row.current).toBeUndefined();
   });
 });
 

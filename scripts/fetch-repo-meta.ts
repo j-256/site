@@ -46,9 +46,6 @@ export interface ClassifyInput {
   result: ResolveOutput;
 }
 
-// Two weeks: one missed weekly cron plus a transient fetch blip must not be
-// enough to hard-fail a build. The committed cache is only a fallback anyway.
-const STALENESS_DAYS = 14;
 const MS_PER_DAY = 86_400_000;
 
 export function resolveMeta(input: ResolveInput): ResolveOutput {
@@ -61,19 +58,16 @@ export function resolveMeta(input: ResolveInput): ResolveOutput {
     };
   }
 
+  // The only genuinely fatal case: no fresh value and nothing cached to show.
   if (!cache) {
     return { error: `No cache entry for ${key} and fresh fetch failed` };
   }
 
-  const ageMs = now.getTime() - new Date(cache.fetchedAt).getTime();
-  const ageDays = Math.floor(ageMs / MS_PER_DAY);
-
-  if (ageDays > STALENESS_DAYS) {
-    return {
-      error: `Cache for ${key} is ${ageDays} days old (>${STALENESS_DAYS}); fresh fetch failed`,
-    };
-  }
-
+  // Fall back to the cached value regardless of age. Staleness is advisory, not
+  // fatal: the live build always fetches fresh, so the committed cache only
+  // surfaces during a fetch failure, where a slightly-old value beats no value
+  // and beats failing the deploy. The warning records how old it was.
+  const ageDays = Math.floor((now.getTime() - new Date(cache.fetchedAt).getTime()) / MS_PER_DAY);
   return {
     value: cache.value,
     warning: `Fell back to cache for ${key} (last fetched ${ageDays} day${ageDays === 1 ? '' : 's'} ago)`,
@@ -216,10 +210,10 @@ export function parseTagNames(body: unknown): string[] {
 /**
  * Decide how a single project's run turned out. Derived entirely from
  * resolveMeta's output so the summary can never disagree with what the build
- * actually did (e.g. claim a cache fallback that resolveMeta rejected as stale):
+ * actually did:
  *   - no value            -> error (build fails, nothing shipped)
  *   - value + cacheUpdate  -> a fresh fetch succeeded (added / unchanged / updated)
- *   - value, no cacheUpdate -> a within-window cache fallback
+ *   - value, no cacheUpdate -> a cache fallback (fetch failed)
  * Pure: the build-summary table is built from these.
  */
 export function classifyRow(input: ClassifyInput): SummaryRow {
