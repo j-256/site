@@ -236,13 +236,13 @@ describe('classifyRow', () => {
 });
 
 describe('staticRow', () => {
-  it('represents a literal-meta project with a static source and status', () => {
+  it('represents a literal-meta project with a static source and no run outcome', () => {
     const row = staticRow({ repo: 'j-256/plugin_rootfile', value: 'stable' });
     expect(row.source).toBe('static');
-    expect(row.status).toBe('static');
     expect(row.current).toBe('stable');
-    // No fetch happened, so there is no prior-versus-current transition.
+    // Never fetched: no prior-versus-current transition and no run-outcome status.
     expect(row.previous).toBeUndefined();
+    expect(row.status).toBeUndefined();
   });
 });
 
@@ -252,7 +252,7 @@ describe('renderSummary', () => {
     { repo: 'j-256/ccam', source: 'release', previous: 'v0.1.1', current: 'v0.1.1', status: 'unchanged' },
     { repo: 'j-256/new', source: 'tag', previous: undefined, current: 'v1.0.0', status: 'added' },
     { repo: 'j-256/down', source: 'release', previous: 'v2.0.0', current: 'v2.0.0', status: 'cache' },
-    { repo: 'j-256/pinned', source: 'static', previous: undefined, current: 'stable', status: 'static' },
+    { repo: 'j-256/pinned', source: 'static', previous: undefined, current: 'stable' },
   ];
 
   it('renders a markdown table with a header and one row per project', () => {
@@ -267,9 +267,10 @@ describe('renderSummary', () => {
     expect(md).toMatch(/j-256\/sh.*pushed.*2026-05-14.*2026-06-08.*updated/);
   });
 
-  it('renders a static (literal-meta) row', () => {
+  it('renders a static (literal-meta) row with a value but no status', () => {
     const md = renderSummary(rows);
-    expect(md).toMatch(/j-256\/pinned \| static \| - \| stable \| .*static/);
+    // Source carries "static"; Status is a dash because nothing ran.
+    expect(md).toMatch(/j-256\/pinned \| static \| - \| stable \| - \|/);
   });
 
   it('summarizes counts in a roll-up line', () => {

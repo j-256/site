@@ -25,11 +25,13 @@ export interface ResolveOutput {
 }
 
 // 'static' covers projects whose meta is a literal string in projects.ts: they
-// are never fetched, so they get their own source/status in the summary rather
-// than being silently omitted.
+// are never fetched, so the source itself carries the whole story and there is
+// no run-outcome status. They get a row so they are not silently omitted.
 export type MetaSourceKind = 'pushed' | 'release' | 'tag' | 'static';
 
-export type RowStatus = 'added' | 'updated' | 'unchanged' | 'cache' | 'error' | 'static';
+// The outcome of a fetch-backed run. Static rows have no run outcome, so their
+// status is undefined.
+export type RowStatus = 'added' | 'updated' | 'unchanged' | 'cache' | 'error';
 
 export interface SummaryRow {
   repo: string;
@@ -38,7 +40,8 @@ export interface SummaryRow {
   previous?: string;
   /** Value after this run (undefined only when fetch failed and no cache could cover it). */
   current?: string;
-  status: RowStatus;
+  /** Run outcome. Undefined for static rows, which were never fetched. */
+  status?: RowStatus;
 }
 
 export interface ClassifyInput {
@@ -237,11 +240,12 @@ export function classifyRow(input: ClassifyInput): SummaryRow {
 
 /**
  * Build a row for a literal-meta project (e.g. meta: 'stable'). These are never
- * fetched, so there is no previous-versus-current transition: the value is
- * pinned in projects.ts and shown verbatim.
+ * fetched, so there is no previous-versus-current transition and no run-outcome
+ * status: the value is pinned in projects.ts and shown verbatim. The 'static'
+ * source carries the whole story; git history records any change to the value.
  */
 export function staticRow(input: { repo: string; value: string }): SummaryRow {
-  return { repo: input.repo, source: 'static', current: input.value, status: 'static' };
+  return { repo: input.repo, source: 'static', current: input.value };
 }
 
 const STATUS_LABEL: Record<RowStatus, string> = {
@@ -250,7 +254,6 @@ const STATUS_LABEL: Record<RowStatus, string> = {
   unchanged: 'unchanged',
   cache: 'from cache (fetch failed)',
   error: 'ERROR (no value)',
-  static: 'static (pinned)',
 };
 
 /** Render the per-project results as a GitHub step-summary markdown block. */
@@ -264,8 +267,9 @@ export function renderSummary(rows: SummaryRow[]): string {
     '| --- | --- | --- | --- | --- |',
   ];
   for (const r of rows) {
+    const status = r.status ? STATUS_LABEL[r.status] : '-';
     lines.push(
-      `| ${r.repo} | ${r.source} | ${dash(r.previous)} | ${dash(r.current)} | ${STATUS_LABEL[r.status]} |`
+      `| ${r.repo} | ${r.source} | ${dash(r.previous)} | ${dash(r.current)} | ${status} |`
     );
   }
 
@@ -275,9 +279,12 @@ export function renderSummary(rows: SummaryRow[]): string {
     unchanged: 0,
     cache: 0,
     error: 0,
-    static: 0,
   };
-  for (const r of rows) counts[r.status]++;
+  for (const r of rows) {
+    if (r.status) counts[r.status]++;
+  }
+  // Static rows have no status, so they are tallied by source instead.
+  const staticCount = rows.filter((r) => r.source === 'static').length;
 
   // Roll-up: only mention non-zero buckets, but always show updated/added so a
   // quiet run still reads as a positive "nothing changed" rather than blank.
@@ -288,7 +295,7 @@ export function renderSummary(rows: SummaryRow[]): string {
   ];
   if (counts.cache > 0) parts.push(`${counts.cache} from cache`);
   if (counts.error > 0) parts.push(`${counts.error} error`);
-  if (counts.static > 0) parts.push(`${counts.static} static`);
+  if (staticCount > 0) parts.push(`${staticCount} static`);
 
   lines.push('', `**${rows.length} project(s):** ${parts.join(', ')}.`);
   return lines.join('\n');
