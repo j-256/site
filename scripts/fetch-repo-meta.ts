@@ -277,14 +277,17 @@ export function renderSummary(rows: SummaryRow[]): string {
   // Static rows have no status, so they are tallied by source instead.
   const staticCount = rows.filter((r) => r.source === 'static').length;
 
-  // Roll-up: fresh is always shown (so a clean run reads positively); the
-  // attention-worthy buckets (cache fallback, error) only appear when non-zero.
-  const parts = [`${counts.fresh} fresh`];
+  // Roll-up: only non-zero buckets, so e.g. an all-static run reads "N static"
+  // rather than "0 fresh, N static". 'none' guards the empty-input case so the
+  // line is never left dangling.
+  const parts: string[] = [];
+  if (counts.fresh > 0) parts.push(`${counts.fresh} fresh`);
   if (counts.cache > 0) parts.push(`${counts.cache} from cache`);
   if (counts.error > 0) parts.push(`${counts.error} error`);
   if (staticCount > 0) parts.push(`${staticCount} static`);
 
-  lines.push('', `**${rows.length} project(s):** ${parts.join(', ')}.`);
+  const rollup = parts.length > 0 ? parts.join(', ') : 'none';
+  lines.push('', `**${rows.length} project(s):** ${rollup}.`);
   return lines.join('\n');
 }
 

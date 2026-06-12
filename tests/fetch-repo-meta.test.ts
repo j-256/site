@@ -273,4 +273,18 @@ describe('renderSummary', () => {
     expect(md).toMatch(/1 error/);
     expect(md).toMatch(/1 static/);
   });
+
+  it('omits zero-count buckets in an all-static run (no "0 fresh")', () => {
+    const md = renderSummary([
+      { repo: 'j-256/a', source: 'static', value: 'stable' },
+      { repo: 'j-256/b', source: 'static', value: 'stable' },
+    ]);
+    expect(md).toMatch(/\*\*2 project\(s\):\*\* 2 static\./);
+    expect(md).not.toMatch(/0 fresh/);
+  });
+
+  it('handles an empty row list without a malformed roll-up', () => {
+    const md = renderSummary([]);
+    expect(md).toMatch(/\*\*0 project\(s\):\*\* none\./);
+  });
 });
