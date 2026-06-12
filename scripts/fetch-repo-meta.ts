@@ -29,25 +29,27 @@ export interface ResolveOutput {
 // no run-outcome status. They get a row so they are not silently omitted.
 export type MetaSourceKind = 'pushed' | 'release' | 'tag' | 'static';
 
-// The outcome of a fetch-backed run. Static rows have no run outcome, so their
-// status is undefined.
-export type RowStatus = 'added' | 'updated' | 'unchanged' | 'cache' | 'error';
+// Where this run's value came from. Provenance, not a comparison: nothing is
+// persisted during a run (the committed cache is a static fallback), so there
+// is no "updated"/"added" save action to report. The point a reader cares
+// about is whether the cached fallback had to be used.
+//   - fresh -> fetched live this run
+//   - cache -> fetch failed, fell back to the committed value (may be stale)
+//   - error -> fetch failed and nothing was cached to fall back to
+export type RowStatus = 'fresh' | 'cache' | 'error';
 
 export interface SummaryRow {
   repo: string;
   source: MetaSourceKind;
-  /** Value in the committed cache before this run (undefined if the repo was never cached). */
-  previous?: string;
-  /** Value after this run (undefined only when fetch failed and no cache could cover it). */
-  current?: string;
-  /** Run outcome. Undefined for static rows, which were never fetched. */
+  /** The value shown this run (undefined only when fetch failed and no cache could cover it). */
+  value?: string;
+  /** Provenance of the value. Undefined for static rows, which were never fetched. */
   status?: RowStatus;
 }
 
 export interface ClassifyInput {
   repo: string;
   source: MetaSourceKind;
-  previous?: string;
   /** resolveMeta's verdict for this repo. The row is derived from this, never recomputed. */
   result: ResolveOutput;
 }
@@ -214,44 +216,39 @@ export function parseTagNames(body: unknown): string[] {
 }
 
 /**
- * Decide how a single project's run turned out. Derived entirely from
+ * Decide the provenance of a single project's value. Derived entirely from
  * resolveMeta's output so the summary can never disagree with what the build
  * actually did:
- *   - no value            -> error (build fails, nothing shipped)
- *   - value + cacheUpdate  -> a fresh fetch succeeded (added / unchanged / updated)
- *   - value, no cacheUpdate -> a cache fallback (fetch failed)
+ *   - no value             -> error (build fails, nothing shipped)
+ *   - value + cacheUpdate  -> fresh (fetched live this run)
+ *   - value, no cacheUpdate -> cache (fetch failed, fell back to committed value)
  * Pure: the build-summary table is built from these.
  */
 export function classifyRow(input: ClassifyInput): SummaryRow {
-  const { repo, source, previous, result } = input;
-  const base = { repo, source, previous };
+  const { repo, source, result } = input;
+  const base = { repo, source };
 
   if (result.value === undefined) {
-    return { ...base, current: undefined, status: 'error' };
+    return { ...base, value: undefined, status: 'error' };
   }
-  const current = result.value;
   if (!result.cacheUpdate) {
-    return { ...base, current, status: 'cache' };
+    return { ...base, value: result.value, status: 'cache' };
   }
-  if (previous === undefined) return { ...base, current, status: 'added' };
-  if (previous === current) return { ...base, current, status: 'unchanged' };
-  return { ...base, current, status: 'updated' };
+  return { ...base, value: result.value, status: 'fresh' };
 }
 
 /**
  * Build a row for a literal-meta project (e.g. meta: 'stable'). These are never
- * fetched, so there is no previous-versus-current transition and no run-outcome
- * status: the value is pinned in projects.ts and shown verbatim. The 'static'
- * source carries the whole story; git history records any change to the value.
+ * fetched, so there is no run-outcome status: the value is pinned in
+ * projects.ts and shown verbatim. The 'static' source carries the whole story;
+ * git history records any change to the value.
  */
 export function staticRow(input: { repo: string; value: string }): SummaryRow {
-  return { repo: input.repo, source: 'static', current: input.value };
+  return { repo: input.repo, source: 'static', value: input.value };
 }
 
 const STATUS_LABEL: Record<RowStatus, string> = {
-  added: 'added',
-  updated: 'updated',
-  unchanged: 'unchanged',
+  fresh: 'fresh',
   cache: 'from cache (fetch failed)',
   error: 'ERROR (no value)',
 };
@@ -265,36 +262,24 @@ export function renderSummary(rows: SummaryRow[]): string {
     // the job summary, not nested as one of its subsections.
     '## Repo metadata',
     '',
-    '| Project | Source | Previous | Current | Status |',
-    '| --- | --- | --- | --- | --- |',
+    '| Project | Source | Value | Status |',
+    '| --- | --- | --- | --- |',
   ];
   for (const r of rows) {
     const status = r.status ? STATUS_LABEL[r.status] : '-';
-    lines.push(
-      `| ${r.repo} | ${r.source} | ${dash(r.previous)} | ${dash(r.current)} | ${status} |`
-    );
+    lines.push(`| ${r.repo} | ${r.source} | ${dash(r.value)} | ${status} |`);
   }
 
-  const counts: Record<RowStatus, number> = {
-    added: 0,
-    updated: 0,
-    unchanged: 0,
-    cache: 0,
-    error: 0,
-  };
+  const counts: Record<RowStatus, number> = { fresh: 0, cache: 0, error: 0 };
   for (const r of rows) {
     if (r.status) counts[r.status]++;
   }
   // Static rows have no status, so they are tallied by source instead.
   const staticCount = rows.filter((r) => r.source === 'static').length;
 
-  // Roll-up: only mention non-zero buckets, but always show updated/added so a
-  // quiet run still reads as a positive "nothing changed" rather than blank.
-  const parts = [
-    `${counts.updated} updated`,
-    `${counts.added} added`,
-    `${counts.unchanged} unchanged`,
-  ];
+  // Roll-up: fresh is always shown (so a clean run reads positively); the
+  // attention-worthy buckets (cache fallback, error) only appear when non-zero.
+  const parts = [`${counts.fresh} fresh`];
   if (counts.cache > 0) parts.push(`${counts.cache} from cache`);
   if (counts.error > 0) parts.push(`${counts.error} error`);
   if (staticCount > 0) parts.push(`${staticCount} static`);
@@ -383,8 +368,6 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // Capture the prior value before resolveMeta mutates the cache below.
-    const previous = cache[project.repo]?.value;
     const fresh = await tryFetch(project);
     const result = resolveMeta({
       key: project.repo,
@@ -393,7 +376,7 @@ async function main(): Promise<void> {
       now,
     });
 
-    rows.push(classifyRow({ repo: project.repo, source: project.meta.source, previous, result }));
+    rows.push(classifyRow({ repo: project.repo, source: project.meta.source, result }));
 
     if (result.cacheUpdate) {
       cache[project.repo] = result.cacheUpdate;
