@@ -257,7 +257,7 @@ describe('renderSummary', () => {
 
   it('renders a markdown table with a header and one row per project', () => {
     const md = renderSummary(rows);
-    expect(md).toMatch(/^### Repo metadata/m);
+    expect(md).toMatch(/^## Repo metadata$/m);
     expect(md).toMatch(/\| Project \| Source \| Previous \| Current \| Status \|/);
     expect(md.match(/^\| j-256\//gm)).toHaveLength(5);
   });

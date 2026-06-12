@@ -261,7 +261,9 @@ export function renderSummary(rows: SummaryRow[]): string {
   const dash = (v: string | undefined): string => (v === undefined || v === '' ? '-' : v);
 
   const lines = [
-    '### Repo metadata',
+    // Top-level (##) so it sits as a sibling of the Vitest report's heading in
+    // the job summary, not nested as one of its subsections.
+    '## Repo metadata',
     '',
     '| Project | Source | Previous | Current | Status |',
     '| --- | --- | --- | --- | --- |',
