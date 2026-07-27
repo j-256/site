@@ -36,20 +36,78 @@ export interface OgCopy {
   tagline: string;
 }
 
+// Baselines chosen so the rendered block sits centred vertically, and every
+// line is anchored to the horizontal centre. Social platforms crop this frame
+// differently, some toward square, so a centred composition survives cropping
+// that would clip a flush-left one
+const CENTER_X = WIDTH / 2;
+const HOST_BASELINE = 194;
+const WORDMARK_BASELINE = 328;
+const TAGLINE_BASELINE = 405;
+const PROMPT_BASELINE = 506;
+
+const HOST_SIZE = 104;
+const WORDMARK_SIZE = 48;
+const TAGLINE_SIZE = 30;
+const PROMPT_SIZE = 30;
+
+// JetBrains Mono advances exactly 0.6em per character, so a line's width is
+// arithmetic rather than a measurement
+const ADVANCE_RATIO = 0.6;
+
+export function lineWidth(text: string, fontSize: number): number {
+  return text.length * fontSize * ADVANCE_RATIO;
+}
+
 export function buildOgSvg(copy: OgCopy): string {
+  // The prompt is "$ " plus a block cursor drawn as a rect, so it is centred as
+  // one unit rather than anchoring the glyph and letting the rect drift
+  const promptWidth = lineWidth('$ ', PROMPT_SIZE) + PROMPT_SIZE * ADVANCE_RATIO;
+  const promptLeft = CENTER_X - promptWidth / 2;
+  const cursorLeft = promptLeft + lineWidth('$ ', PROMPT_SIZE);
+  const cursorWidth = Math.round(PROMPT_SIZE * ADVANCE_RATIO);
+  const cursorHeight = Math.round(PROMPT_SIZE * 0.86);
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}">
   <rect width="${WIDTH}" height="${HEIGHT}" fill="${BG}"/>
-  <text x="80" y="250" font-family="JetBrains Mono" font-weight="700" font-size="104" fill="${FG_BRIGHT}">${escapeXml(copy.host)}</text>
-  <text x="80" y="342" font-family="JetBrains Mono" font-size="48" fill="${FG}">${escapeXml(copy.wordmark)}</text>
-  <text x="80" y="420" font-family="JetBrains Mono" font-size="30" fill="${FG_DIM}">${escapeXml(copy.tagline)}</text>
-  <text x="80" y="548" font-family="JetBrains Mono" font-weight="700" font-size="30" fill="${FG_BRIGHT}">$</text>
-  <rect x="108" y="526" width="18" height="26" fill="${FG_BRIGHT}"/>
+  <text x="${CENTER_X}" y="${HOST_BASELINE}" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="${HOST_SIZE}" fill="${FG_BRIGHT}">${escapeXml(copy.host)}</text>
+  <text x="${CENTER_X}" y="${WORDMARK_BASELINE}" text-anchor="middle" font-family="JetBrains Mono" font-size="${WORDMARK_SIZE}" fill="${FG}">${escapeXml(copy.wordmark)}</text>
+  <text x="${CENTER_X}" y="${TAGLINE_BASELINE}" text-anchor="middle" font-family="JetBrains Mono" font-size="${TAGLINE_SIZE}" fill="${FG_DIM}">${escapeXml(copy.tagline)}</text>
+  <text x="${promptLeft}" y="${PROMPT_BASELINE}" font-family="JetBrains Mono" font-weight="700" font-size="${PROMPT_SIZE}" fill="${FG_BRIGHT}">$</text>
+  <rect x="${cursorLeft}" y="${PROMPT_BASELINE - cursorHeight}" width="${cursorWidth}" height="${cursorHeight}" fill="${FG_BRIGHT}"/>
 </svg>`;
+}
+
+// Every line is a single un-wrapped <text>, so copy that outgrows the canvas
+// silently runs off the edge. The host is the tightest line because it is the
+// largest, and SITE_HOST is deliberately swappable, so check all three
+// variable-length lines rather than trusting today's values. The prompt is a
+// fixed two characters and cannot overflow
+const SIDE_MARGIN = 60;
+
+export function overflowingLines(copy: OgCopy): string[] {
+  const usable = WIDTH - SIDE_MARGIN * 2;
+  const lines: Array<[string, string, number]> = [
+    ['host', copy.host, HOST_SIZE],
+    ['wordmark', copy.wordmark, WORDMARK_SIZE],
+    ['tagline', copy.tagline, TAGLINE_SIZE],
+  ];
+  return lines
+    .filter(([, text, size]) => lineWidth(text, size) > usable)
+    .map(
+      ([label, text, size]) =>
+        `${label} needs ${Math.ceil(lineWidth(text, size))}px, usable is ${usable}px`
+    );
 }
 
 async function main(): Promise<void> {
   const host = siteHost();
-  const svg = buildOgSvg({ host, wordmark: WORDMARK, tagline: TAGLINE });
+  const copy: OgCopy = { host, wordmark: WORDMARK, tagline: TAGLINE };
+  const overflowing = overflowingLines(copy);
+  if (overflowing.length > 0) {
+    throw new Error(`copy does not fit the canvas: ${overflowing.join('; ')}`);
+  }
+  const svg = buildOgSvg(copy);
   const resvg = new Resvg(svg, {
     fitTo: { mode: 'width', value: WIDTH },
     font: {
