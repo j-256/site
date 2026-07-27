@@ -1,18 +1,14 @@
 const STORAGE_KEY = 'bootSeen';
-const FRESH_DAYS = 7;
 const TYPE_RATE_MS = 8;
 const BANNER_TYPE_RATE_MS = 0.8;
 
 function shouldSkipAnimation(): boolean {
-  // ?animate overrides both reduced-motion and the localStorage freshness check.
+  // ?animate overrides both reduced-motion and the per-session check.
   // Intended for development; real users won't add the flag.
   if (new URLSearchParams(location.search).has('animate')) return false;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
   try {
-    const last = localStorage.getItem(STORAGE_KEY);
-    if (!last) return false;
-    const ageMs = Date.now() - new Date(last).getTime();
-    return ageMs < FRESH_DAYS * 86_400_000;
+    return sessionStorage.getItem(STORAGE_KEY) !== null;
   } catch {
     return false;
   }
@@ -85,10 +81,10 @@ function init(): void {
   if (!boot) return;
 
   // The inline <script is:inline> in BootBanner.astro decided whether to start
-  // in 'typing' state or render statically. If it chose static, just write the
-  // timestamp and bail.
+  // in 'typing' state or render statically. If it chose static, just mark the
+  // session and bail.
   if (!boot.classList.contains('typing')) {
-    try { localStorage.setItem(STORAGE_KEY, new Date().toISOString()); } catch {}
+    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch {}
     return;
   }
   if (shouldSkipAnimation()) {
@@ -108,8 +104,8 @@ function init(): void {
   void (async () => {
     await revealLines(preps, controller.signal);
     // Once typing finishes, the cursor on the prompt line blinks indefinitely.
-    // Save the timestamp so the next visit doesn't re-animate.
-    try { localStorage.setItem(STORAGE_KEY, new Date().toISOString()); } catch {}
+    // Mark the session so later navigations within it don't re-animate.
+    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch {}
   })();
 }
 
