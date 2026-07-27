@@ -15,7 +15,7 @@ const bannerNarrow = readFileSync(resolve(process.cwd(), 'src/data/banner-narrow
   // Synchronously decide whether the banner types in or just shows up. The full
   // boot.ts module loads asynchronously and inherits whichever state we set here.
   // The boot block is always visible -- the only question is whether the typing
-  // animation runs. Keep this gate in sync with shouldSkipAnimation() in boot.ts.
+  // animation runs. Keep this gate in sync with shouldSkipAnimation() in boot.ts
   (function () {
     var boot = document.querySelector('[data-boot]');
     if (!boot) return;
@@ -26,7 +26,7 @@ const bannerNarrow = readFileSync(resolve(process.cwd(), 'src/data/banner-narrow
     var reduced = !force && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!force && (seen !== null || reduced)) {
       // Later loads in the same session, and reduced-motion users, see the boot
-      // block as static text. No typing animation runs.
+      // block as static text. No typing animation runs
     } else {
       boot.classList.add('typing');
       // Override browser scroll restoration so a reload-with-cached-scroll-position

@@ -3,7 +3,7 @@ const TYPE_RATE_MS = 8;
 const BANNER_TYPE_RATE_MS = 0.8;
 
 function shouldSkipAnimation(): boolean {
-  // ?animate overrides both reduced-motion and the per-session check.
+  // ?animate overrides both reduced-motion and the per-session check
   // Intended for development; real users won't add the flag.
   if (new URLSearchParams(location.search).has('animate')) return false;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
@@ -82,7 +82,7 @@ function init(): void {
 
   // The inline <script is:inline> in BootBanner.astro decided whether to start
   // in 'typing' state or render statically. If it chose static, just mark the
-  // session and bail.
+  // session and bail
   if (!boot.classList.contains('typing')) {
     try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch {}
     return;
@@ -104,7 +104,7 @@ function init(): void {
   void (async () => {
     await revealLines(preps, controller.signal);
     // Once typing finishes, the cursor on the prompt line blinks indefinitely.
-    // Mark the session so later navigations within it don't re-animate.
+    // Mark the session so later navigations within it don't re-animate
     try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch {}
   })();
 }

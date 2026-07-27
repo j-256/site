@@ -50,7 +50,7 @@ function readMarks() {
 // "boot has settled" signal: boot.ts writes it in both branches of init(), and
 // after the ENTIRE reveal, which outlasts the shown banner. Waiting on banner
 // text alone is not enough -- at wide viewports the shown banner types first and
-// stabilizes while the other banner and the prompt line are still filling in.
+// stabilizes while the other banner and the prompt line are still filling in
 // Returns rather than throws on timeout: a missing mark is a finding to report
 // per case, not a reason to abandon the run
 async function waitForSessionMark(page) {
