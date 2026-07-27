@@ -21,11 +21,9 @@ const rows = projects.map(p => ({
   prefix: formatLsRow({
     perms: p.perms,
     owner: p.owner,
-    group: p.group,
     meta: resolveMeta(p),
-    name: p.name,
-    desc: '',
-  }).trimEnd(),
+  }),
+  name: p.name,
   desc: p.desc,
 }));
 ---
@@ -33,7 +31,7 @@ const rows = projects.map(p => ({
   {rows.map(row => (
     <li class="project-row">
       <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer" draggable="false">
-        <span class="prefix">{row.prefix}</span>
+        <span class="prefix">{row.prefix}  {row.name}</span>
         <span class="annotation"># {row.desc}</span>
       </a>
     </li>

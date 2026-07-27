@@ -4,20 +4,16 @@ import { formatSymlinkRow } from '../lib/format';
 
 const rows = links.map(l => ({
   href: l.target,
-  text: formatSymlinkRow({
-    perms: l.perms,
-    owner: l.owner,
-    group: l.group,
-    name: l.name,
-    target: l.target.replace(/^https:\/\/(www\.)?/, ''),
-  }),
+  prefix: formatSymlinkRow({ perms: l.perms, owner: l.owner }),
+  name: l.name,
+  target: l.target.replace(/^https:\/\/(www\.)?/, ''),
 }));
 ---
 <ul class="links wide-rows" aria-label="Links">
   {rows.map(row => (
     <li class="link-row">
       <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer">
-        <span class="row-prefix">{row.text}</span>
+        <span class="row-prefix">{row.prefix}  {row.name}  -&gt; {row.target}</span>
       </a>
     </li>
   ))}

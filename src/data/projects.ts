@@ -7,7 +7,6 @@ export interface Project {
   /** ls-style mode string. Leading char by artifact shape: `-` for a single runnable thing (script, CLI, bookmarklet), `d` for a bundle/tree (extension, cartridge, collection). */
   perms: string;
   owner: string;
-  group: string;
   /** Either a literal string (rendered verbatim) or a source descriptor (resolved at build time). */
   meta: string | MetaSource;
   /** Display name -- what shows up as the directory/file name. */
@@ -21,7 +20,6 @@ export const projects: Project[] = [
   {
     perms: '-rwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: { source: 'pushed' },
     name: 'sh',
     repo: 'j-256/sh',
@@ -30,7 +28,6 @@ export const projects: Project[] = [
   {
     perms: '-rwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: { source: 'tag' },
     name: 'rover-dumper',
     repo: 'j-256/rover-dumper',
@@ -39,7 +36,6 @@ export const projects: Project[] = [
   {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: { source: 'pushed' },
     name: 'claude-code-skills',
     repo: 'j-256/claude-code-skills',
@@ -48,7 +44,6 @@ export const projects: Project[] = [
   {
     perms: '-rwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: { source: 'release' },
     name: 'ccam',
     repo: 'j-256/ccam',
@@ -57,7 +52,6 @@ export const projects: Project[] = [
   {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: { source: 'release' },
     name: 'git-crypt-vscode',
     repo: 'j-256/git-crypt-vscode',
@@ -66,7 +60,6 @@ export const projects: Project[] = [
   {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: { source: 'release' },
     name: 'qlomni',
     repo: 'j-256/qlomni',
@@ -75,7 +68,6 @@ export const projects: Project[] = [
   {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: 'stable',
     name: 'bm_keyvalidator',
     repo: 'j-256/bm_keyvalidator',
@@ -84,7 +76,6 @@ export const projects: Project[] = [
   {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: 'stable',
     name: 'plugin_rootfile',
     repo: 'j-256/plugin_rootfile',
@@ -93,7 +84,6 @@ export const projects: Project[] = [
   {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
-    group: 'staff',
     meta: { source: 'pushed' },
     name: 'site',
     repo: 'j-256/site',

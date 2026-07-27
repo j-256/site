@@ -2,67 +2,44 @@ import { describe, expect, it } from 'vitest';
 import { formatLsRow, formatSymlinkRow } from '../src/lib/format';
 
 describe('formatLsRow', () => {
-  it('formats a project row with all columns aligned', () => {
+  it('emits perms, owner and a padded meta column with no name', () => {
     const row = formatLsRow({
       perms: 'drwxr-xr-x',
       owner: 'jklein',
-      group: 'staff',
       meta: 'stable',
-      name: 'rover-dumper',
-      desc: 'Bookmarklet: bulk-download Rover.com pet photos',
     });
-    expect(row).toBe(
-      'drwxr-xr-x  jklein  staff  stable      rover-dumper        Bookmarklet: bulk-download Rover.com pet photos'
-    );
+    expect(row).toBe('drwxr-xr-x  jklein  stable    ');
   });
 
-  it('right-pads short meta values to a consistent width', () => {
+  it('pads meta to a fixed width so names start at the same column', () => {
+    const short = formatLsRow({ perms: '-rwxr-xr-x', owner: 'jklein', meta: 'wip' });
+    const long = formatLsRow({ perms: '-rwxr-xr-x', owner: 'jklein', meta: '2026-05-14' });
+    expect(short).toHaveLength(long.length);
+  });
+
+  it('does not truncate a meta value that exceeds the column width', () => {
     const row = formatLsRow({
       perms: '-rwxr-xr-x',
       owner: 'jklein',
-      group: 'staff',
-      meta: 'wip',
-      name: 'sh',
-      desc: 'Shell script library',
+      meta: 'v10.20.30-rc1',
     });
-    expect(row).toMatch(/wip {9}sh/);
+    expect(row).toContain('v10.20.30-rc1');
   });
 
-  it('right-pads short names to a consistent width so descriptions align', () => {
-    const row = formatLsRow({
-      perms: 'drwxr-xr-x',
-      owner: 'jklein',
-      group: 'staff',
-      meta: '2026-05-18',
-      name: 'sh',
-      desc: 'Shell script library',
-    });
-    expect(row).toMatch(/sh {18}Shell/);
+  it('omits the group column entirely', () => {
+    const row = formatLsRow({ perms: 'drwxr-xr-x', owner: 'jklein', meta: 'stable' });
+    expect(row).not.toContain('staff');
   });
 });
 
 describe('formatSymlinkRow', () => {
-  it('formats a symlink with no meta column and a 10-wide name', () => {
-    const row = formatSymlinkRow({
-      perms: 'lrwxr-xr-x',
-      owner: 'jklein',
-      group: 'staff',
-      name: 'github',
-      target: 'github.com/j-256',
-    });
-    expect(row).toBe(
-      'lrwxr-xr-x  jklein  staff  github      -> github.com/j-256'
-    );
+  it('emits perms and owner with no name, target or group', () => {
+    const row = formatSymlinkRow({ perms: 'lrwxr-xr-x', owner: 'jklein' });
+    expect(row).toBe('lrwxr-xr-x  jklein');
   });
 
-  it('does not pad names that exceed the symlink name width', () => {
-    const row = formatSymlinkRow({
-      perms: 'lrwxr-xr-x',
-      owner: 'jklein',
-      group: 'staff',
-      name: 'really-long-link-name',
-      target: 'example.com',
-    });
-    expect(row).toMatch(/really-long-link-name  -> example/);
+  it('omits the group column entirely', () => {
+    const row = formatSymlinkRow({ perms: 'lrwxr-xr-x', owner: 'jklein' });
+    expect(row).not.toContain('staff');
   });
 });
