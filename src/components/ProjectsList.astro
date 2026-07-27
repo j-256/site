@@ -27,13 +27,10 @@ const rows = projects.map(p => ({
   desc: p.desc,
 }));
 ---
-<ul class="projects wide-rows" aria-label="Projects">
+<ul class="projects" aria-label="Projects">
   {rows.map(row => (
     <li class="project-row">
-      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer" draggable="false">
-        <span class="prefix">{row.prefix}  {row.name}</span>
-        <span class="annotation"># {row.desc}</span>
-      </a>
+      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer" draggable="false"><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span><span class="annotation"># {row.desc}</span></a>
     </li>
   ))}
 </ul>
@@ -58,17 +55,24 @@ const rows = projects.map(p => ({
     display: block;
     text-decoration: none;
     min-height: 44px;
+    /* Rows wrap at field boundaries rather than scrolling. The hanging
+       indent puts continuation lines under the first, the way a narrow
+       terminal wraps long output. */
+    white-space: pre-wrap;
+    padding-left: 2ch;
+    text-indent: -2ch;
   }
-  .prefix {
-    display: block;
-    white-space: pre;
-    overflow-x: auto;
+  .prefix { white-space: pre; }
+  .name {
+    font-weight: 700;
+    color: var(--fg-bright);
+    white-space: nowrap;
   }
   .annotation {
     display: block;
     color: var(--fg-dim);
     padding-left: 2ch;
-    /* Wrap at the prose column even though the row container extends wider. */
+    text-indent: 0;
     max-width: var(--content-width);
     user-select: text;
   }
