@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildOgSvg, escapeXml, lineWidth, overflowingLines } from '../scripts/write-og';
+import {
+  blockLeftEdge,
+  buildOgSvg,
+  escapeXml,
+  lineWidth,
+  overflowingLines,
+} from '../scripts/write-og';
 
 const CURRENT_COPY = {
   host: 'jklein.dev',
@@ -64,6 +70,34 @@ describe('buildOgSvg', () => {
     // The cursor sits exactly two character advances right of the prompt, so a
     // future spacing change cannot silently detach them
     expect(cursorX - promptX).toBeCloseTo(2 * 30 * 0.6, 5);
+  });
+
+  it('starts the prompt at the text block left edge, not centred', () => {
+    const prompt = svg.match(/<text x="([\d.]+)"[^>]*>\$<\/text>/);
+    expect(prompt).not.toBeNull();
+    expect(Number(prompt![1])).toBeCloseTo(
+      blockLeftEdge({ host: 'example.dev', wordmark: 'A Name', tagline: 'A tagline.' }),
+      5
+    );
+  });
+});
+
+describe('blockLeftEdge', () => {
+  it('derives the edge from whichever line renders widest', () => {
+    // The tagline is widest in the shipping copy, so it sets the edge
+    expect(blockLeftEdge(CURRENT_COPY)).toBeCloseTo(
+      600 - lineWidth(CURRENT_COPY.tagline, 30) / 2,
+      5
+    );
+  });
+
+  it('follows the host when the host is the widest line', () => {
+    const copy = { host: 'a-long-hostname.dev', wordmark: 'A', tagline: 'short' };
+    expect(blockLeftEdge(copy)).toBeCloseTo(600 - lineWidth(copy.host, 104) / 2, 5);
+  });
+
+  it('never places the edge past the canvas centre', () => {
+    expect(blockLeftEdge({ host: 'a', wordmark: 'b', tagline: 'c' })).toBeLessThan(600);
   });
 });
 

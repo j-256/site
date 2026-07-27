@@ -36,10 +36,11 @@ export interface OgCopy {
   tagline: string;
 }
 
-// Baselines chosen so the rendered block sits centred vertically, and every
-// line is anchored to the horizontal centre. Social platforms crop this frame
-// differently, some toward square, so a centred composition survives cropping
-// that would clip a flush-left one
+// Baselines chosen so the rendered block sits centred vertically. The three
+// copy lines are centred horizontally; the prompt is flush with the block's
+// left edge, the way a terminal would start a new line. Social platforms crop
+// this frame differently, some toward square, so a centred composition
+// survives cropping that would clip a flush-left one
 const CENTER_X = WIDTH / 2;
 const HOST_BASELINE = 194;
 const WORDMARK_BASELINE = 328;
@@ -59,11 +60,22 @@ export function lineWidth(text: string, fontSize: number): number {
   return text.length * fontSize * ADVANCE_RATIO;
 }
 
+// Left edge of the centred text block, which is set by whichever line renders
+// widest. The prompt starts here so it reads as the next line of that block
+// rather than as a centred fragment of its own
+export function blockLeftEdge(copy: OgCopy): number {
+  const widest = Math.max(
+    lineWidth(copy.host, HOST_SIZE),
+    lineWidth(copy.wordmark, WORDMARK_SIZE),
+    lineWidth(copy.tagline, TAGLINE_SIZE)
+  );
+  return CENTER_X - widest / 2;
+}
+
 export function buildOgSvg(copy: OgCopy): string {
-  // The prompt is "$ " plus a block cursor drawn as a rect, so it is centred as
-  // one unit rather than anchoring the glyph and letting the rect drift
-  const promptWidth = lineWidth('$ ', PROMPT_SIZE) + PROMPT_SIZE * ADVANCE_RATIO;
-  const promptLeft = CENTER_X - promptWidth / 2;
+  // The cursor is a rect rather than a glyph, so it is placed relative to the
+  // prompt instead of being anchored independently
+  const promptLeft = blockLeftEdge(copy);
   const cursorLeft = promptLeft + lineWidth('$ ', PROMPT_SIZE);
   const cursorWidth = Math.round(PROMPT_SIZE * ADVANCE_RATIO);
   const cursorHeight = Math.round(PROMPT_SIZE * 0.86);
