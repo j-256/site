@@ -80,4 +80,12 @@ const rows = projects.map(p => ({
   .row-link:focus-visible .prefix { color: var(--fg-bright); }
   .row-link:hover .annotation,
   .row-link:focus-visible .annotation { color: var(--fg); }
+  /* Colour alone is a weak focus signal, and the sticky header can overlap a
+     row scrolled beneath it. An outline plus scroll-margin keeps the focused
+     row both visible and unobscured */
+  .row-link:focus-visible {
+    outline: 2px solid var(--fg-bright);
+    outline-offset: 2px;
+    scroll-margin-top: 5em;
+  }
 </style>
