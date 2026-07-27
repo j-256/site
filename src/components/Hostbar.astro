@@ -1,10 +1,11 @@
 ---
 // Site identity bar. Sits in normal flow under the boot transcript, becomes
 // sticky once the viewport scrolls past it.
+import { WORDMARK, TAGLINE } from '../data/site';
 ---
 <header class="hostbar" aria-label="Site header">
-  <h1 class="wordmark">James Klein</h1>
-  <p class="tagline">Finds the workaround. Ships the tool.</p>
+  <h1 class="wordmark">{WORDMARK}</h1>
+  <p class="tagline">{TAGLINE}</p>
 </header>
 
 <style>
