@@ -6,4 +6,5 @@ dist/
 .env
 .env.local
 public/CNAME
+public/og.png
 .claude/worktrees/
