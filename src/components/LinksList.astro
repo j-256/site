@@ -2,19 +2,29 @@
 import { links } from '../data/links';
 import { formatSymlinkRow } from '../lib/format';
 
+// Break long targets at path separators only. Without the explicit <wbr> the
+// browser breaks inside hostnames and slugs (github.com/j- / 256), which reads
+// as a typo. Escapes first because the result is injected with set:html; the
+// only input is the hand-authored links data, never user input
+function breakableTarget(target: string): string {
+  const escaped = target
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped.replace(/\//g, '/<wbr>');
+}
+
 const rows = links.map(l => ({
   href: l.target,
   prefix: formatSymlinkRow({ perms: l.perms, owner: l.owner }),
   name: l.name,
-  target: l.target.replace(/^https:\/\/(www\.)?/, ''),
+  target: breakableTarget(l.target.replace(/^https:\/\/(www\.)?/, '')),
 }));
 ---
-<ul class="links wide-rows" aria-label="Links">
+<ul class="links" aria-label="Links">
   {rows.map(row => (
     <li class="link-row">
-      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer">
-        <span class="row-prefix">{row.prefix}  {row.name}  -&gt; {row.target}</span>
-      </a>
+      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer"><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span> <span class="arrow">-&gt;</span>&#160;<span class="target" set:html={row.target} /></a>
     </li>
   ))}
 </ul>
@@ -26,9 +36,21 @@ const rows = links.map(l => ({
     display: block;
     min-height: 44px;
     text-decoration: none;
-    white-space: pre;
-    overflow-x: auto;
+    white-space: pre-wrap;
+    padding-left: 2ch;
+    text-indent: -2ch;
   }
-  .row-link:hover .row-prefix,
-  .row-link:focus-visible .row-prefix { color: var(--fg-bright); }
+  .prefix { white-space: pre; }
+  .name {
+    font-weight: 700;
+    color: var(--fg-bright);
+    white-space: nowrap;
+  }
+  /* Arrow is atomic and glued to its target by the nbsp in the markup, so a
+     wrap never leaves a dangling '-' at the end of a line */
+  .arrow { white-space: pre; }
+  /* nowrap plus the injected <wbr> means the only break points are slashes */
+  .target { white-space: nowrap; }
+  .row-link:hover .prefix,
+  .row-link:focus-visible .prefix { color: var(--fg-bright); }
 </style>
