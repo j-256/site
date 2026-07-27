@@ -1,7 +1,7 @@
 // Checks that project rows wrap instead of scrolling, at every viewport width a
 // phone is likely to report. Scoped to .projects: the symlink list has its own
 // wrapping rules, and .skip-link is deliberately clipped to 1px by the
-// visually-hidden pattern, so a page-wide scrollWidth sweep flags both forever.
+// visually-hidden pattern, so a page-wide scrollWidth sweep flags both forever
 import { chromium } from 'playwright';
 
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
