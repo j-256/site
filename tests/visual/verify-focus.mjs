@@ -16,6 +16,10 @@ const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
 const MIN_OUTLINE_PX = 2;
 const MIN_TAP_TARGET_PX = 44;
 const ROW_SELECTOR = '.row-link';
+// The reached-vs-total check below derives both sides from ROW_SELECTOR, so a
+// selector matching nothing compares 0 to 0 and passes. One row per entry in
+// src/data/projects.ts plus one per entry in src/data/links.ts
+const EXPECTED_ROWS = 11;
 const FOCUSABLE_SELECTOR = 'a[href], button, [tabindex]:not([tabindex="-1"])';
 
 function readFocusedRow() {
@@ -49,6 +53,12 @@ async function sweep({ label, key, prime }) {
   if (prime) await prime(page);
 
   console.log(`-- ${label} --`);
+  if (total !== EXPECTED_ROWS) {
+    failures++;
+    console.log(
+      `FAIL  SELECTOR-MATCHED  ${ROW_SELECTOR}=${total} (expected ${EXPECTED_ROWS})`
+    );
+  }
   let checked = 0;
   const maxPresses = total * 4 + 20;
   for (let i = 0; i < maxPresses && checked < total; i++) {

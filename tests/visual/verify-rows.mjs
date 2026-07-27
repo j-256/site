@@ -7,6 +7,11 @@ import { chromium } from 'playwright';
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
 
 const WIDTHS = [320, 360, 375, 384, 390, 393, 412, 414, 445, 448, 600, 900];
+// Both verdicts here come from filtering a class-based selection, so an empty
+// selection would pass every filter. Floors, not equalities: .name is shared
+// with the symlink list, and this is the project count in src/data/projects.ts
+const MIN_NAMES = 9;
+const MIN_PROJECT_ROWS = 9;
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 414, height: 900 } });
 const page = await context.newPage();
@@ -28,15 +33,27 @@ for (const width of WIDTHS) {
       pageScrolls: de.scrollWidth > de.clientWidth + 1,
       overflowing,
       splitNames,
+      nameCount: document.querySelectorAll('.name').length,
+      projectRowCount: document.querySelectorAll('.projects .row-link').length,
     };
   });
-  const ok = !result.pageScrolls && result.overflowing.length === 0 && result.splitNames.length === 0;
+  const tooFewNodes =
+    result.nameCount < MIN_NAMES || result.projectRowCount < MIN_PROJECT_ROWS;
+  const ok =
+    !result.pageScrolls &&
+    result.overflowing.length === 0 &&
+    result.splitNames.length === 0 &&
+    !tooFewNodes;
   if (!ok) failures++;
   console.log(
     `${String(width).padStart(4)}px  ${ok ? 'PASS' : 'FAIL'}` +
       (result.pageScrolls ? '  page-h-scroll' : '') +
       (result.overflowing.length ? `  overflow: ${result.overflowing.join(', ')}` : '') +
-      (result.splitNames.length ? `  split: ${result.splitNames.join(', ')}` : '')
+      (result.splitNames.length ? `  split: ${result.splitNames.join(', ')}` : '') +
+      (tooFewNodes
+        ? `  SELECTOR-MATCHED-TOO-FEW: .name=${result.nameCount} (expected >=${MIN_NAMES}), ` +
+          `.projects .row-link=${result.projectRowCount} (expected >=${MIN_PROJECT_ROWS})`
+        : '')
   );
 }
 await browser.close();

@@ -6,6 +6,9 @@
 import { chromium } from 'playwright';
 
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
+// Every verdict below comes from iterating a class-based selection, so an empty
+// selection would report no rows and pass. One entry per link in src/data/links.ts
+const EXPECTED_ROWS = 2;
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 360, height: 700 } });
@@ -41,6 +44,13 @@ for (const width of [320, 360, 375, 390, 412, 414, 600]) {
       arrowSplit: row.querySelector('.arrow').getClientRects().length > 1,
     }));
   });
+  if (result.length !== EXPECTED_ROWS) {
+    failures++;
+    console.log(
+      `${String(width).padStart(4)}px  FAIL  SELECTOR-MATCHED  ` +
+        `.links .row-link=${result.length} (expected ${EXPECTED_ROWS})`
+    );
+  }
   for (const row of result) {
     // A line ending in '-' means a hyphen break inside the URL
     const hyphenBreak = row.lines.slice(0, -1).some(l => l.trimEnd().endsWith('-'));
