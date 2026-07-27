@@ -19,7 +19,8 @@
     "astro": "astro",
     "typecheck": "astro check",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:visual": "node tests/visual/run-all.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@vitest/ui": "^4.1.7",
+    "playwright": "^1.61.1",
     "tsx": "^4.22.3",
     "vitest": "^4.1.7"
   }
