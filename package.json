@@ -28,6 +28,7 @@
     "typescript": "^6.0.3"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^25.9.1",
     "@vitest/ui": "^4.1.7",
     "playwright": "^1.61.1",
