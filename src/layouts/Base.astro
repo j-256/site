@@ -55,8 +55,11 @@ const buildDate = new Date().toISOString();
 </head>
 <body>
   <a href="#content" class="skip-link">Skip to content</a>
-  <main id="content">
-    <slot />
-  </main>
+  <div class="page">
+    <slot name="banner" />
+    <main id="content" tabindex="-1">
+      <slot />
+    </main>
+  </div>
 </body>
 </html>

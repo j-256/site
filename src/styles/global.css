@@ -61,14 +61,14 @@ html, body {
   color: var(--selection-fg);
 }
 
-main {
+.page {
   max-width: var(--content-width);
   margin: 0 auto;
   padding: var(--pad-mobile);
 }
 
 @media (min-width: 600px) {
-  main { padding: var(--pad-desktop); }
+  .page { padding: var(--pad-desktop); }
 }
 
 a {
@@ -138,6 +138,13 @@ a:visited {
   background: var(--fg-bright);
   color: var(--bg);
   padding: 0.5rem 1rem;
+}
+
+/* tabindex="-1" lets the skip link move focus into the content so the next Tab
+   continues from there. Suppress the outline the programmatic focus would draw
+   around the whole main region; the focus target is the region, not a control */
+#content:focus {
+  outline: none;
 }
 
 .cursor {

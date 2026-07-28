@@ -106,6 +106,91 @@ await sweep({
   },
 });
 
+// Tab to the skip link (first focusable), activate it, and report where focus
+// lands
+async function activateSkipLink(page) {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    if (document.activeElement) document.activeElement.blur();
+  });
+  await page.keyboard.press('Tab');
+  const onSkipLink = await page.evaluate(
+    () => !!document.activeElement && document.activeElement.classList.contains('skip-link')
+  );
+  await page.keyboard.press('Enter');
+  // Wait for focus to settle on #content. waitForFunction re-evaluates across
+  // the same-document hash navigation instead of racing it the way a bare
+  // evaluate does; when focus does not move (the regression the self-check
+  // forces) it times out and the read below reports the real landing spot
+  await page
+    .waitForFunction(() => document.activeElement && document.activeElement.id === 'content', null, {
+      timeout: 1500,
+    })
+    .catch(() => {});
+  const landed = await page.evaluate(() => {
+    const el = document.activeElement;
+    return { tag: el ? el.tagName.toLowerCase() : null, id: el ? el.id || null : null };
+  });
+  return { onSkipLink, landed };
+}
+
+// Following the skip link must move focus into the content, not merely scroll
+// there. tabindex="-1" on #content lets the browser park focus on the region,
+// so a keyboard user's next Tab continues from inside the content rather than
+// from the skip link. Assert focus lands on #content after activation, then
+// self-check by stripping the tabindex and confirming the same activation no
+// longer reaches #content, so this cannot pass vacuously if the target regresses
+//
+// The skip target must also sit past the decorative boot banner: #content
+// begins at the site header, not the ASCII transcript, so following the link
+// bypasses the banner rather than landing on it. Assert the banner renders
+// outside #content
+async function checkSkipLinkFocus() {
+  const page = await context.newPage();
+  await page.goto(SITE_URL, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  console.log('-- Skip link moves focus --');
+
+  const real = await activateSkipLink(page);
+  const moved = real.onSkipLink && real.landed.id === 'content';
+  if (!moved) failures++;
+  console.log(
+    `${moved ? 'PASS' : 'FAIL'}  skipLinkFocused=${real.onSkipLink} ` +
+      `landed=${real.landed.tag}#${real.landed.id ?? ''}`
+  );
+
+  const banner = await page.evaluate(() => {
+    const el = document.querySelector('[data-boot]');
+    const main = document.querySelector('#content');
+    return {
+      present: !!el,
+      insideContent: !!(el && main && main.contains(el)),
+    };
+  });
+  const bypassesBanner = banner.present && !banner.insideContent;
+  if (!bypassesBanner) failures++;
+  console.log(
+    `${bypassesBanner ? 'PASS' : 'FAIL'}  boot banner present=${banner.present} ` +
+      `insideContent=${banner.insideContent} (want present=true insideContent=false)`
+  );
+
+  await page.evaluate(() => {
+    const main = document.querySelector('#content');
+    if (main) main.removeAttribute('tabindex');
+  });
+  const stripped = await activateSkipLink(page);
+  const detects = stripped.landed.id !== 'content';
+  if (!detects) failures++;
+  console.log(
+    `self-check: without tabindex landed=${stripped.landed.tag}#${stripped.landed.id ?? ''}  ` +
+      `${detects ? 'PASS (this check can still fail)' : 'FAIL (check is vacuous)'}`
+  );
+
+  await page.close();
+}
+
+await checkSkipLinkFocus();
+
 await browser.close();
 console.log(failures === 0 ? 'ALL PASS' : `${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);
