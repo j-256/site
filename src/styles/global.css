@@ -29,6 +29,16 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+  /* Nothing here scrolls horizontally, but a touch drag could still rubber-band
+     the whole page sideways: the compositor allows elastic overscroll even with
+     zero scroll range. That displacement never reaches scrollLeft, scrollX, or
+     visualViewport.offsetLeft, so it is invisible to script and only observable
+     by screenshotting mid-drag -- measured at 14px on a 390px viewport. Vertical
+     overscroll is left alone; only the axis with no scroll range is suppressed */
+  overscroll-behavior-x: none;
+}
+
 html, body {
   background: var(--bg);
   color: var(--fg);
