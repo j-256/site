@@ -19,7 +19,7 @@ const ROW_SELECTOR = '.row-link';
 // The reached-vs-total check below derives both sides from ROW_SELECTOR, so a
 // selector matching nothing compares 0 to 0 and passes. One row per entry in
 // src/data/projects.ts plus one per entry in src/data/links.ts
-const EXPECTED_ROWS = 11;
+const EXPECTED_ROWS = 15;
 const FOCUSABLE_SELECTOR = 'a[href], button, [tabindex]:not([tabindex="-1"])';
 
 function readFocusedRow() {

@@ -26,14 +26,6 @@ export const projects: Project[] = [
     desc: 'Shell utilities you can run by piping the URL to bash; no install needed',
   },
   {
-    perms: '-rwxr-xr-x',
-    owner: 'jklein',
-    meta: { source: 'release' },
-    name: 'ccam',
-    repo: 'j-256/ccam',
-    desc: 'TypeScript CLI and SDK for the Commerce Cloud Account Manager API (and its reference implementation, since the API is undocumented)',
-  },
-  {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
     meta: { source: 'release' },
@@ -104,6 +96,14 @@ export const projects: Project[] = [
     name: 'p12-generator',
     repo: 'j-256/p12-generator',
     desc: 'Turns a B2C Commerce CA bundle into a .p12 keystore, entirely in your browser',
+  },
+  {
+    perms: '-rwxr-xr-x',
+    owner: 'jklein',
+    meta: { source: 'release' },
+    name: 'ccam',
+    repo: 'j-256/ccam',
+    desc: 'TypeScript CLI and SDK for the Commerce Cloud Account Manager API (and its reference implementation, since the API is undocumented)',
   },
   {
     perms: '-rwxr-xr-x',

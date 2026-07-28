@@ -8,10 +8,12 @@ const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
 
 const WIDTHS = [320, 360, 375, 384, 390, 393, 412, 414, 445, 448, 600, 900];
 // Both verdicts here come from filtering a class-based selection, so an empty
-// selection would pass every filter. Floors, not equalities: .name is shared
-// with the symlink list, and this is the project count in src/data/projects.ts
-const MIN_NAMES = 9;
-const MIN_PROJECT_ROWS = 9;
+// selection would pass every filter. Floors, not equalities, set to the current
+// counts to guard against a near-empty match while tolerating future growth:
+// .name is shared with the symlink list (projects + links), MIN_PROJECT_ROWS is
+// the src/data/projects.ts count alone
+const MIN_NAMES = 15;
+const MIN_PROJECT_ROWS = 13;
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 414, height: 900 } });
 const page = await context.newPage();
