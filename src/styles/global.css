@@ -92,7 +92,12 @@ a:visited {
   font-weight: 700;
   /* allow banner to break out of the 80ch column if needed */
   max-width: 100vw;
-  overflow-x: auto;
+  /* Deliberately not a scroll container. overflow-x: auto made the banner
+     independently pannable -- the art could be dragged sideways within the
+     page, and any sub-pixel overflow raised a scrollbar around it. The
+     breakpoints in BootBanner.astro size both assets to fit, so there is
+     nothing legitimate to scroll to */
+  overflow-x: clip;
 }
 
 .sr-only {
