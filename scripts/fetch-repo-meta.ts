@@ -26,7 +26,7 @@ export interface ResolveOutput {
 
 // 'static' covers projects whose meta is a literal string in projects.ts: they
 // are never fetched, so the source itself carries the whole story and there is
-// no run-outcome status. They get a row so they are not silently omitted.
+// no run-outcome status. They get a row so they are not silently omitted
 export type MetaSourceKind = 'pushed' | 'release' | 'tag' | 'static';
 
 // Where this run's value came from. Provenance, not a comparison: nothing is
@@ -41,16 +41,16 @@ export type RowStatus = 'fresh' | 'cache' | 'error';
 export interface SummaryRow {
   repo: string;
   source: MetaSourceKind;
-  /** The value shown this run (undefined only when fetch failed and no cache could cover it). */
+  /** The value shown this run (undefined only when fetch failed and no cache could cover it) */
   value?: string;
-  /** Provenance of the value. Undefined for static rows, which were never fetched. */
+  /** Provenance of the value. Undefined for static rows, which were never fetched */
   status?: RowStatus;
 }
 
 export interface ClassifyInput {
   repo: string;
   source: MetaSourceKind;
-  /** resolveMeta's verdict for this repo. The row is derived from this, never recomputed. */
+  /** resolveMeta's verdict for this repo. The row is derived from this, never recomputed */
   result: ResolveOutput;
 }
 
@@ -66,7 +66,7 @@ export function resolveMeta(input: ResolveInput): ResolveOutput {
     };
   }
 
-  // The only genuinely fatal case: no fresh value and nothing cached to show.
+  // The only genuinely fatal case: no fresh value and nothing cached to show
   if (!cache) {
     return { error: `No cache entry for ${key} and fresh fetch failed` };
   }
@@ -74,7 +74,7 @@ export function resolveMeta(input: ResolveInput): ResolveOutput {
   // Fall back to the cached value regardless of age. Staleness is advisory, not
   // fatal: the live build always fetches fresh, so the committed cache only
   // surfaces during a fetch failure, where a slightly-old value beats no value
-  // and beats failing the deploy. The warning records how old it was.
+  // and beats failing the deploy. The warning records how old it was
   const ageDays = Math.floor((now.getTime() - new Date(cache.fetchedAt).getTime()) / MS_PER_DAY);
   return {
     value: cache.value,
@@ -109,13 +109,13 @@ interface Semver {
   major: number;
   minor: number;
   patch: number;
-  /** Pre-release identifiers (the bit after `-`), already split on `.`. Empty means a final release. */
+  /** Pre-release identifiers (the bit after `-`), already split on `.`. Empty means a final release */
   pre: string[];
 }
 
 // Accepts an optional leading `v`, then major.minor.patch, then an optional
 // `-prerelease`. Build metadata (`+...`) is ignored. Not a full SemVer 2.0
-// grammar, just enough to order the tags this repo's projects actually publish.
+// grammar, just enough to order the tags this repo's projects actually publish
 const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
 
 export function parseSemver(tag: string): Semver | null {
@@ -133,13 +133,13 @@ export function parseSemver(tag: string): Semver | null {
 // (a version WITH a pre-release is LOWER than the same without; identifiers
 // compared left to right, numeric < numeric numerically, anything else
 // lexically, numeric identifiers rank below non-numeric). Returns >0 if a
-// outranks b, <0 if b outranks a, 0 if equal.
+// outranks b, <0 if b outranks a, 0 if equal
 export function compareSemver(a: Semver, b: Semver): number {
   if (a.major !== b.major) return a.major - b.major;
   if (a.minor !== b.minor) return a.minor - b.minor;
   if (a.patch !== b.patch) return a.patch - b.patch;
 
-  // A final release outranks any pre-release of the same numeric version.
+  // A final release outranks any pre-release of the same numeric version
   if (a.pre.length === 0 && b.pre.length > 0) return 1;
   if (a.pre.length > 0 && b.pre.length === 0) return -1;
 
@@ -154,14 +154,14 @@ export function compareSemver(a: Semver, b: Semver): number {
     if (bNum) return 1;
     return ai < bi ? -1 : 1;
   }
-  // All shared identifiers equal: the longer pre-release set wins.
+  // All shared identifiers equal: the longer pre-release set wins
   return a.pre.length - b.pre.length;
 }
 
 /**
  * Pick the highest-precedence tag from a repo's tag list. GitHub's `/tags`
  * endpoint does NOT guarantee latest-first ordering, so taking `data[0]` is a
- * bug waiting on a second tag. Non-semver tags are ignored.
+ * bug waiting on a second tag. Non-semver tags are ignored
  */
 export function pickLatestTag(tags: string[]): string {
   if (tags.length === 0) {
@@ -182,14 +182,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 // Validators for the GitHub responses we depend on. A 200 with an unexpected
 // shape (API change, deprecation notice body) must throw here so the caller
-// degrades to the cache rather than writing `undefined` into the page.
+// degrades to the cache rather than writing `undefined` into the page
 export function parsePushedAt(body: unknown): string {
   if (!isRecord(body) || typeof body.pushed_at !== 'string') {
     throw new Error('repo response missing string pushed_at');
   }
   const date = body.pushed_at.slice(0, 10);
   // Guard against a well-formed-but-nonsense 200 (the contract change the
-  // validators exist to catch); a real GitHub response is always ISO-8601.
+  // validators exist to catch); a real GitHub response is always ISO-8601
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error(`pushed_at is not an ISO date: ${body.pushed_at}`);
   }
@@ -222,7 +222,7 @@ export function parseTagNames(body: unknown): string[] {
  *   - no value             -> error (build fails, nothing shipped)
  *   - value + cacheUpdate  -> fresh (fetched live this run)
  *   - value, no cacheUpdate -> cache (fetch failed, fell back to committed value)
- * Pure: the build-summary table is built from these.
+ * Pure: the build-summary table is built from these
  */
 export function classifyRow(input: ClassifyInput): SummaryRow {
   const { repo, source, result } = input;
@@ -241,7 +241,7 @@ export function classifyRow(input: ClassifyInput): SummaryRow {
  * Build a row for a literal-meta project (e.g. meta: 'stable'). These are never
  * fetched, so there is no run-outcome status: the value is pinned in
  * projects.ts and shown verbatim. The 'static' source carries the whole story;
- * git history records any change to the value.
+ * git history records any change to the value
  */
 export function staticRow(input: { repo: string; value: string }): SummaryRow {
   return { repo: input.repo, source: 'static', value: input.value };
@@ -253,13 +253,13 @@ const STATUS_LABEL: Record<RowStatus, string> = {
   error: 'ERROR (no value)',
 };
 
-/** Render the per-project results as a GitHub step-summary markdown block. */
+/** Render the per-project results as a GitHub step-summary markdown block */
 export function renderSummary(rows: SummaryRow[]): string {
   const dash = (v: string | undefined): string => (v === undefined || v === '' ? '-' : v);
 
   const lines = [
     // Top-level (##) so it sits as a sibling of the Vitest report's heading in
-    // the job summary, not nested as one of its subsections.
+    // the job summary, not nested as one of its subsections
     '## Repo metadata',
     '',
     '| Project | Source | Value | Status |',
@@ -274,12 +274,12 @@ export function renderSummary(rows: SummaryRow[]): string {
   for (const r of rows) {
     if (r.status) counts[r.status]++;
   }
-  // Static rows have no status, so they are tallied by source instead.
+  // Static rows have no status, so they are tallied by source instead
   const staticCount = rows.filter((r) => r.source === 'static').length;
 
   // Roll-up: only non-zero buckets, so e.g. an all-static run reads "N static"
   // rather than "0 fresh, N static". 'none' guards the empty-input case so the
-  // line is never left dangling.
+  // line is never left dangling
   const parts: string[] = [];
   if (counts.fresh > 0) parts.push(`${counts.fresh} fresh`);
   if (counts.cache > 0) parts.push(`${counts.cache} from cache`);
@@ -365,7 +365,7 @@ async function main(): Promise<void> {
 
   for (const project of projects) {
     // Literal-meta projects are never fetched; surface them as static rows
-    // rather than dropping them from the summary.
+    // rather than dropping them from the summary
     if (!isMetaSource(project.meta)) {
       rows.push(staticRow({ repo: project.repo, value: project.meta }));
       continue;

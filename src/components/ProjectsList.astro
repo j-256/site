@@ -45,7 +45,7 @@ const rows = projects.map(p => {
 
 <script is:inline>
   // Selecting text inside a full-row <a> still fires click on mouseup, which
-  // navigates away. Cancel the click when a non-empty selection exists.
+  // navigates away. Cancel the click when a non-empty selection exists
   document.addEventListener('click', function (e) {
     var link = e.target.closest && e.target.closest('.row-link');
     if (!link) return;

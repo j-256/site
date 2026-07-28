@@ -30,7 +30,7 @@ const bannerNarrow = readFileSync(resolve(process.cwd(), 'src/data/banner-narrow
     } else {
       boot.classList.add('typing');
       // Override browser scroll restoration so a reload-with-cached-scroll-position
-      // doesn't put the viewport below the boot block while the animation plays.
+      // doesn't put the viewport below the boot block while the animation plays
       try { history.scrollRestoration = 'manual'; } catch (e) {}
       window.scrollTo(0, 0);
     }

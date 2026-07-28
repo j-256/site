@@ -4,14 +4,14 @@ export type MetaSource =
   | { source: 'tag' };
 
 export interface Project {
-  /** ls-style mode string. Leading char by artifact shape: `-` for a single runnable thing (script, CLI, bookmarklet), `d` for a bundle/tree (extension, cartridge, collection). */
+  /** ls-style mode string. Leading char by artifact shape: `-` for a single runnable thing (script, CLI, bookmarklet), `d` for a bundle/tree (extension, cartridge, collection) */
   perms: string;
   owner: string;
-  /** Either a literal string (rendered verbatim) or a source descriptor (resolved at build time). */
+  /** Either a literal string (rendered verbatim) or a source descriptor (resolved at build time) */
   meta: string | MetaSource;
-  /** Display name -- what shows up as the directory/file name. */
+  /** Display name -- what shows up as the directory/file name */
   name: string;
-  /** GitHub `owner/repo` slug. Used for the link target and for build-time metadata fetches. */
+  /** GitHub `owner/repo` slug. Used for the link target and for build-time metadata fetches */
   repo: string;
   desc: string;
 }

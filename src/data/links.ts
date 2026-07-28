@@ -2,7 +2,7 @@ export interface Link {
   perms: string;
   owner: string;
   name: string;
-  /** Full URL the symlink points at. */
+  /** Full URL the symlink points at */
   target: string;
 }
 

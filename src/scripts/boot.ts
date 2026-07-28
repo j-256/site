@@ -7,7 +7,7 @@ const BANNER_TICKS = 190;
 
 function shouldSkipAnimation(): boolean {
   // ?animate overrides both reduced-motion and the per-session check
-  // Intended for development; real users won't add the flag.
+  // Intended for development; real users won't add the flag
   if (new URLSearchParams(location.search).has('animate')) return false;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
   try {
@@ -99,7 +99,7 @@ function prepareLines(boot: HTMLElement): LinePrep[] {
   // Lock each line's natural height as min-height BEFORE emptying its text nodes.
   // Otherwise emptied <pre> banners and prose lines collapse to 0/1 line, the
   // page reflows tighter, and subsequent content jumps when typing fills space
-  // back in. Locking heights up front keeps layout stable for the entire animation.
+  // back in. Locking heights up front keeps layout stable for the entire animation
   const lines = Array.from(boot.querySelectorAll<HTMLElement>('[data-boot-line]'));
   const preps: LinePrep[] = [];
   for (const line of lines) {
@@ -135,7 +135,7 @@ async function revealLines(preps: LinePrep[], signal: AbortSignal): Promise<void
       line.style.visibility = 'visible';
     }
     // Banner uses a faster char rate so the 8-line ASCII art reveals quickly
-    // instead of feeling like a multi-second wait. Prose uses the standard rate.
+    // instead of feeling like a multi-second wait. Prose uses the standard rate
     const rate = step[0].isBanner ? BANNER_TYPE_RATE_MS : TYPE_RATE_MS;
     if (step.length > 1) {
       await typeAlternates(step, rate, signal);
@@ -158,7 +158,7 @@ function init(): void {
   }
   if (shouldSkipAnimation()) {
     // Edge case: typing class was set by inline script but reduced-motion
-    // changed mid-load. Just clear it.
+    // changed mid-load. Just clear it
     boot.classList.remove('typing');
     return;
   }
@@ -167,7 +167,7 @@ function init(): void {
 
   // Lock heights and snapshot text nodes BEFORE awaiting anything async, so
   // the inline-script-applied .typing class can hide content while we still
-  // have access to the natural heights and original text.
+  // have access to the natural heights and original text
   const preps = prepareLines(boot);
 
   void (async () => {

@@ -50,7 +50,7 @@ describe('resolveMeta', () => {
 
   it('falls back to an arbitrarily old cache without erroring (staleness is advisory)', () => {
     // A stale fallback never breaks a build; the live build always fetches
-    // fresh, so the committed cache only surfaces during a fetch failure.
+    // fresh, so the committed cache only surfaces during a fetch failure
     const cache: CacheEntry = { value: '2026-01-01', fetchedAt: fresh(120) };
     const result = resolveMeta({
       key: 'j-256/sh',
@@ -77,7 +77,7 @@ describe('resolveMeta', () => {
 
 describe('pickLatestTag', () => {
   it('picks the highest semver, not the first element', () => {
-    // GitHub /tags ordering is not guaranteed to be latest-first.
+    // GitHub /tags ordering is not guaranteed to be latest-first
     expect(pickLatestTag(['v1.0.0', 'v2.3.1', 'v1.9.0'])).toBe('v2.3.1');
   });
 
@@ -94,12 +94,12 @@ describe('pickLatestTag', () => {
   });
 
   it('ranks a numeric pre-release identifier below an alphanumeric one', () => {
-    // SemVer 2.0: numeric identifiers always have lower precedence than non-numeric.
+    // SemVer 2.0: numeric identifiers always have lower precedence than non-numeric
     expect(pickLatestTag(['v1.0.0-1', 'v1.0.0-alpha'])).toBe('v1.0.0-alpha');
   });
 
   it('ranks a longer pre-release set above its prefix', () => {
-    // SemVer 2.0: when all shared identifiers are equal, more fields wins.
+    // SemVer 2.0: when all shared identifiers are equal, more fields wins
     expect(pickLatestTag(['v1.0.0-alpha', 'v1.0.0-alpha.1'])).toBe('v1.0.0-alpha.1');
   });
 
@@ -178,7 +178,7 @@ describe('classifyRow', () => {
   // A fresh-fetch success carries a cacheUpdate; a cache fallback carries only a
   // value (+warning); an error carries neither. These mirror resolveMeta's
   // output contract. Status reports provenance, not a comparison: nothing is
-  // persisted during a run, so there is no "updated"/"added" action to report.
+  // persisted during a run, so there is no "updated"/"added" action to report
   const freshOk = (value: string) => ({ value, cacheUpdate: { value, fetchedAt: NOW.toISOString() } });
 
   it('marks a freshly fetched value as fresh', () => {
@@ -200,7 +200,7 @@ describe('classifyRow', () => {
   });
 
   // The point of threading resolveMeta's output through: the row reflects what
-  // the resolver actually did, never a recomputed guess.
+  // the resolver actually did, never a recomputed guess
   it('agrees with resolveMeta: any cache + failed fetch is a cache fallback', () => {
     const staleCache: CacheEntry = { value: 'v1.0.0', fetchedAt: fresh(120) };
     const result = resolveMeta({ key: 'j-256/x', fresh: { ok: false }, cache: staleCache, now: NOW });
@@ -224,7 +224,7 @@ describe('staticRow', () => {
     const row = staticRow({ repo: 'j-256/plugin_rootfile', value: 'stable' });
     expect(row.source).toBe('static');
     expect(row.value).toBe('stable');
-    // Never fetched: no run-outcome status.
+    // Never fetched: no run-outcome status
     expect(row.status).toBeUndefined();
   });
 });
@@ -257,7 +257,7 @@ describe('renderSummary', () => {
 
   it('renders a static (literal-meta) row with a value but no status', () => {
     const md = renderSummary(rows);
-    // Source carries "static"; Status is a dash because nothing ran.
+    // Source carries "static"; Status is a dash because nothing ran
     expect(md).toMatch(/j-256\/pinned \| static \| stable \| - \|/);
   });
 
