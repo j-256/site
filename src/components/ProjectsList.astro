@@ -1,7 +1,7 @@
 ---
 import { projects, type Project, type MetaSource } from '../data/projects';
 import cache from '../data/repo-meta.cache.json';
-import { formatLsRow } from '../lib/format';
+import { formatLsRow, META_WIDTH } from '../lib/format';
 
 function isMetaSource(meta: Project['meta']): meta is MetaSource {
   return typeof meta === 'object' && meta !== null && 'source' in meta;
@@ -16,16 +16,24 @@ function resolveMeta(p: Project): string {
   return entry.value;
 }
 
-const rows = projects.map(p => ({
-  href: `https://github.com/${p.repo}`,
-  prefix: formatLsRow({
-    perms: p.perms,
-    owner: p.owner,
-    meta: resolveMeta(p),
-  }),
-  name: p.name,
-  desc: p.desc,
-}));
+const rows = projects.map(p => {
+  const meta = resolveMeta(p);
+  if (meta.length > META_WIDTH) {
+    // Surface content that outgrew the column: fitMeta clips it to keep the
+    // row aligned, so without this the shortening would be silent
+    console.warn(`meta "${meta}" for ${p.repo} exceeds ${META_WIDTH} chars and will be clipped`);
+  }
+  return {
+    href: `https://github.com/${p.repo}`,
+    prefix: formatLsRow({
+      perms: p.perms,
+      owner: p.owner,
+      meta,
+    }),
+    name: p.name,
+    desc: p.desc,
+  };
+});
 ---
 <ul class="projects" aria-label="Projects">
   {rows.map(row => (

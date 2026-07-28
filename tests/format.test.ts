@@ -17,13 +17,20 @@ describe('formatLsRow', () => {
     expect(short).toHaveLength(long.length);
   });
 
-  it('does not truncate a meta value that exceeds the column width', () => {
+  it('clips a meta value that exceeds the column width to width with an ellipsis', () => {
     const row = formatLsRow({
       perms: '-rwxr-xr-x',
       owner: 'jklein',
       meta: 'v10.20.30-rc1',
     });
-    expect(row).toContain('v10.20.30-rc1');
+    expect(row).not.toContain('v10.20.30-rc1');
+    expect(row).toContain('v10.20.30\u2026');
+  });
+
+  it('keeps a clipped over-width value aligned with a short one', () => {
+    const short = formatLsRow({ perms: '-rwxr-xr-x', owner: 'jklein', meta: 'wip' });
+    const long = formatLsRow({ perms: '-rwxr-xr-x', owner: 'jklein', meta: 'v10.20.30-rc1' });
+    expect(short).toHaveLength(long.length);
   });
 
   it('omits the group column entirely', () => {
