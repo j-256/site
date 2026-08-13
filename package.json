@@ -24,8 +24,8 @@
     "test:visual": "node tests/visual/run-all.mjs"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.9",
-    "astro": "^6.3.7",
+    "@astrojs/check": "^0.9.10",
+    "astro": "^7.2.1",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
@@ -33,7 +33,7 @@
     "@types/node": "^25.9.1",
     "@vitest/ui": "^4.1.7",
     "playwright": "^1.61.1",
-    "tsx": "^4.22.3",
+    "tsx": "^4.23.12",
     "vitest": "^4.1.7"
   }
 }
