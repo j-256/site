@@ -26,13 +26,13 @@
   "dependencies": {
     "@astrojs/check": "^0.9.10",
     "astro": "^7.2.1",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "@types/node": "^25.9.1",
-    "@vitest/ui": "^4.1.7",
-    "playwright": "^1.61.1",
+    "@types/node": "^26.2.0",
+    "@vitest/ui": "^4.1.10",
+    "playwright": "^1.62.1",
     "tsx": "^4.23.12",
     "vitest": "^4.1.7"
   }
