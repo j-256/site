@@ -1,46 +1,50 @@
 {
   "j-256/sh": {
-    "value": "2026-07-27",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "value": "2026-08-09",
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/claude-code-skills": {
-    "value": "2026-07-22",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "value": "2026-08-15",
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/git-crypt-vscode": {
     "value": "v3.0.1",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
-  },
-  "j-256/site": {
-    "value": "2026-07-28",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/ccam": {
     "value": "v0.1.1",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/rover-dumper": {
     "value": "v1.1.0",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/qlomni": {
     "value": "v1.8.0",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/stowplan": {
     "value": "v1.1.0",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/reorg": {
-    "value": "v0.1.1",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "value": "v0.5.0",
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/stream-eval": {
-    "value": "2026-06-28",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "value": "2026-08-15",
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
   },
   "j-256/p12-generator": {
-    "value": "2026-07-27",
-    "fetchedAt": "2026-07-28T02:49:58.783Z"
+    "value": "2026-08-15",
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
+  },
+  "j-256/hookrelay": {
+    "value": "v1.0.0",
+    "fetchedAt": "2026-08-16T07:19:07.809Z"
+  },
+  "j-256/site": {
+    "value": "2026-08-15",
+    "fetchedAt": "2026-08-16T17:17:35.287Z"
   }
 }

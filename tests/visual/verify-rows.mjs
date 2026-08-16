@@ -7,13 +7,6 @@ import { chromium } from 'playwright';
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
 
 const WIDTHS = [320, 360, 375, 384, 390, 393, 412, 414, 445, 448, 600, 900];
-// Both verdicts here come from filtering a class-based selection, so an empty
-// selection would pass every filter. Floors, not equalities, set to the current
-// counts to guard against a near-empty match while tolerating future growth:
-// .name is shared with the symlink list (projects + links), MIN_PROJECT_ROWS is
-// the src/data/projects.ts count alone
-const MIN_NAMES = 15;
-const MIN_PROJECT_ROWS = 13;
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 414, height: 900 } });
 const page = await context.newPage();
@@ -31,30 +24,45 @@ for (const width of WIDTHS) {
     const splitNames = [...document.querySelectorAll('.name')]
       .filter(el => el.getClientRects().length > 1)
       .map(el => el.textContent);
+    const projectCount = Number(
+      document.querySelector('.projects')?.getAttribute('data-row-count')
+    );
+    const linkCount = Number(document.querySelector('.links')?.getAttribute('data-row-count'));
     return {
       pageScrolls: de.scrollWidth > de.clientWidth + 1,
       overflowing,
       splitNames,
       nameCount: document.querySelectorAll('.name').length,
       projectRowCount: document.querySelectorAll('.projects .row-link').length,
+      expectedNameCount: projectCount + linkCount,
+      expectedProjectRowCount: projectCount,
+      declaredCountsValid:
+        Number.isInteger(projectCount) &&
+        projectCount > 0 &&
+        Number.isInteger(linkCount) &&
+        linkCount > 0,
     };
   });
-  const tooFewNodes =
-    result.nameCount < MIN_NAMES || result.projectRowCount < MIN_PROJECT_ROWS;
+  const countMismatch =
+    !result.declaredCountsValid ||
+    result.nameCount !== result.expectedNameCount ||
+    result.projectRowCount !== result.expectedProjectRowCount;
   const ok =
     !result.pageScrolls &&
     result.overflowing.length === 0 &&
     result.splitNames.length === 0 &&
-    !tooFewNodes;
+    !countMismatch;
   if (!ok) failures++;
   console.log(
     `${String(width).padStart(4)}px  ${ok ? 'PASS' : 'FAIL'}` +
       (result.pageScrolls ? '  page-h-scroll' : '') +
       (result.overflowing.length ? `  overflow: ${result.overflowing.join(', ')}` : '') +
       (result.splitNames.length ? `  split: ${result.splitNames.join(', ')}` : '') +
-      (tooFewNodes
-        ? `  SELECTOR-MATCHED-TOO-FEW: .name=${result.nameCount} (expected >=${MIN_NAMES}), ` +
-          `.projects .row-link=${result.projectRowCount} (expected >=${MIN_PROJECT_ROWS})`
+      (countMismatch
+        ? `  SELECTOR-COUNT-MISMATCH: .name=${result.nameCount} ` +
+          `(expected ${result.declaredCountsValid ? result.expectedNameCount : 'valid declared count'}), ` +
+          `.projects .row-link=${result.projectRowCount} ` +
+          `(expected ${result.declaredCountsValid ? result.expectedProjectRowCount : 'valid declared count'})`
         : '')
   );
 }

@@ -6,9 +6,6 @@
 import { chromium } from 'playwright';
 
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
-// Every verdict below comes from iterating a class-based selection, so an empty
-// selection would report no rows and pass. One entry per link in src/data/links.ts
-const EXPECTED_ROWS = 2;
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 360, height: 700 } });
@@ -38,20 +35,26 @@ for (const width of [320, 360, 375, 390, 412, 414, 600]) {
       }
       return [...lines.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1]);
     };
-    return [...document.querySelectorAll('.links .row-link')].map(row => ({
-      lines: readLines(row),
-      overflow: Math.round(row.scrollWidth - row.clientWidth),
-      arrowSplit: row.querySelector('.arrow').getClientRects().length > 1,
-    }));
+    const expected = Number(document.querySelector('.links')?.getAttribute('data-row-count'));
+    return {
+      expected,
+      declaredCountValid: Number.isInteger(expected) && expected > 0,
+      rows: [...document.querySelectorAll('.links .row-link')].map(row => ({
+        lines: readLines(row),
+        overflow: Math.round(row.scrollWidth - row.clientWidth),
+        arrowSplit: row.querySelector('.arrow').getClientRects().length > 1,
+      })),
+    };
   });
-  if (result.length !== EXPECTED_ROWS) {
+  if (!result.declaredCountValid || result.rows.length !== result.expected) {
     failures++;
     console.log(
       `${String(width).padStart(4)}px  FAIL  SELECTOR-MATCHED  ` +
-        `.links .row-link=${result.length} (expected ${EXPECTED_ROWS})`
+        `.links .row-link=${result.rows.length} ` +
+        `(expected ${result.declaredCountValid ? result.expected : 'valid declared count'})`
     );
   }
-  for (const row of result) {
+  for (const row of result.rows) {
     // A line ending in '-' means a hyphen break inside the URL
     const hyphenBreak = row.lines.slice(0, -1).some(l => l.trimEnd().endsWith('-'));
     const ok = row.overflow === 0 && !row.arrowSplit && !hyphenBreak;

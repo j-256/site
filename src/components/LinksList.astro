@@ -21,7 +21,7 @@ const rows = links.map(l => ({
   target: breakableTarget(l.target.replace(/^https:\/\/(www\.)?/, '')),
 }));
 ---
-<ul class="links" aria-label="Links">
+<ul class="links" aria-label="Links" data-row-count={rows.length}>
   {rows.map(row => (
     <li class="link-row">
       <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer"><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span> <span class="arrow">-&gt;</span>&#160;<span class="target" set:html={row.target} /></a>

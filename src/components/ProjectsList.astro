@@ -35,7 +35,7 @@ const rows = projects.map(p => {
   };
 });
 ---
-<ul class="projects" aria-label="Projects">
+<ul class="projects" aria-label="Projects" data-row-count={rows.length}>
   {rows.map(row => (
     <li class="project-row">
       <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer" draggable="false"><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span><span class="annotation"># {row.desc}</span></a>

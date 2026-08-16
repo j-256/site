@@ -16,10 +16,7 @@ const SITE_URL = process.env.SITE_URL ?? 'http://localhost:4321';
 const MIN_OUTLINE_PX = 2;
 const MIN_TAP_TARGET_PX = 44;
 const ROW_SELECTOR = '.row-link';
-// The reached-vs-total check below derives both sides from ROW_SELECTOR, so a
-// selector matching nothing compares 0 to 0 and passes. One row per entry in
-// src/data/projects.ts plus one per entry in src/data/links.ts
-const EXPECTED_ROWS = 15;
+const ROW_LIST_SELECTORS = ['.projects', '.links'];
 const FOCUSABLE_SELECTOR = 'a[href], button, [tabindex]:not([tabindex="-1"])';
 
 function readFocusedRow() {
@@ -49,14 +46,29 @@ async function sweep({ label, key, prime }) {
   const page = await context.newPage();
   await page.goto(SITE_URL, { waitUntil: 'networkidle' });
   await page.waitForTimeout(300);
-  const total = await page.evaluate(sel => document.querySelectorAll(sel).length, ROW_SELECTOR);
+  const counts = await page.evaluate(
+    ({ rowSelector, listSelectors }) => {
+      const declared = listSelectors.map(selector => {
+        const value = document.querySelector(selector)?.getAttribute('data-row-count');
+        return value === null || value === undefined ? Number.NaN : Number(value);
+      });
+      return {
+        total: document.querySelectorAll(rowSelector).length,
+        expected: declared.reduce((sum, count) => sum + count, 0),
+        valid: declared.every(count => Number.isInteger(count) && count > 0),
+      };
+    },
+    { rowSelector: ROW_SELECTOR, listSelectors: ROW_LIST_SELECTORS }
+  );
+  const total = counts.total;
   if (prime) await prime(page);
 
   console.log(`-- ${label} --`);
-  if (total !== EXPECTED_ROWS) {
+  if (!counts.valid || total !== counts.expected) {
     failures++;
     console.log(
-      `FAIL  SELECTOR-MATCHED  ${ROW_SELECTOR}=${total} (expected ${EXPECTED_ROWS})`
+      `FAIL  SELECTOR-MATCHED  ${ROW_SELECTOR}=${total} ` +
+        `(expected ${counts.valid ? counts.expected : 'valid declared row counts'})`
     );
   }
   let checked = 0;
