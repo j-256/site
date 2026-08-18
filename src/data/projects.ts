@@ -92,6 +92,14 @@ export const projects: Project[] = [
   {
     perms: 'drwxr-xr-x',
     owner: 'jklein',
+    meta: { source: 'pushed' },
+    name: 'persistent-clicker',
+    repo: 'j-256/persistent-clicker',
+    desc: 'Chrome extension that clicks a selected control on a per-tab interval and resumes across reloads and navigation',
+  },
+  {
+    perms: 'drwxr-xr-x',
+    owner: 'jklein',
     meta: 'stable',
     name: 'bm_keyvalidator',
     repo: 'j-256/bm_keyvalidator',
