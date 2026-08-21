@@ -3,9 +3,9 @@
     "value": "2026-08-09",
     "fetchedAt": "2026-08-18T00:34:45.297Z"
   },
-  "j-256/claude-code-skills": {
-    "value": "2026-08-17",
-    "fetchedAt": "2026-08-18T00:34:45.297Z"
+  "j-256/agent-skills": {
+    "value": "2026-08-21",
+    "fetchedAt": "2026-08-21T01:21:17Z"
   },
   "j-256/git-crypt-vscode": {
     "value": "v3.0.1",
@@ -32,8 +32,8 @@
     "fetchedAt": "2026-08-18T00:34:45.297Z"
   },
   "j-256/stream-eval": {
-    "value": "2026-08-17",
-    "fetchedAt": "2026-08-18T00:34:45.297Z"
+    "value": "2026-08-21",
+    "fetchedAt": "2026-08-21T01:21:17Z"
   },
   "j-256/p12-generator": {
     "value": "2026-08-15",

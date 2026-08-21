@@ -53,8 +53,8 @@ export const projects: Project[] = [
     perms: 'drwxr-xr-x',
     owner: 'jklein',
     meta: { source: 'pushed' },
-    name: 'claude-code-skills',
-    repo: 'j-256/claude-code-skills',
+    name: 'agent-skills',
+    repo: 'j-256/agent-skills',
     desc: 'Agent skills that turn Salesforce API specs and live-sandbox findings into cited, runnable workflows',
   },
   {
@@ -63,7 +63,7 @@ export const projects: Project[] = [
     meta: { source: 'pushed' },
     name: 'stream-eval',
     repo: 'j-256/stream-eval',
-    desc: 'Deterministic Claude Code eval harness with isolated profiles, typed transcript assertions, and a live dashboard',
+    desc: 'Deterministic multi-agent eval harness with isolated profiles, portable assertions, and a live dashboard',
   },
   {
     perms: 'drwxr-xr-x',
