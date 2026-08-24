@@ -86,6 +86,7 @@ import { readFile, writeFile, appendFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { projects, type Project, type MetaSource } from '../src/data/projects';
+import { assertPublicRepository } from '../src/lib/repo-visibility';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CACHE_PATH = resolve(HERE, '../src/data/repo-meta.cache.json');
@@ -95,6 +96,7 @@ const SUMMARY_PATH = process.env.GITHUB_STEP_SUMMARY;
 
 interface RepoResponse {
   pushed_at: string;
+  visibility: string;
 }
 
 interface ReleaseResponse {
@@ -305,9 +307,16 @@ async function ghFetch<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-async function fetchPushed(repo: string): Promise<string> {
-  const data = await ghFetch<RepoResponse>(`https://api.github.com/repos/${repo}`);
-  return parsePushedAt(data);
+async function fetchVerifiedRepo(repo: string): Promise<RepoResponse> {
+  let data: RepoResponse;
+  try {
+    data = await ghFetch<RepoResponse>(`https://api.github.com/repos/${repo}`);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Cannot verify ${repo} is public: ${detail}`);
+  }
+  assertPublicRepository(repo, data);
+  return data;
 }
 
 async function fetchReleaseTag(repo: string): Promise<string> {
@@ -326,7 +335,10 @@ function isMetaSource(meta: Project['meta']): meta is MetaSource {
   return typeof meta === 'object' && meta !== null && 'source' in meta;
 }
 
-async function tryFetch(project: Project): Promise<{ ok: true; value: string } | { ok: false }> {
+async function tryFetch(
+  project: Project,
+  repoResponse: RepoResponse
+): Promise<{ ok: true; value: string } | { ok: false }> {
   if (!isMetaSource(project.meta)) {
     return { ok: true, value: project.meta };
   }
@@ -334,7 +346,7 @@ async function tryFetch(project: Project): Promise<{ ok: true; value: string } |
     let value: string;
     switch (project.meta.source) {
       case 'pushed':
-        value = await fetchPushed(project.repo);
+        value = parsePushedAt(repoResponse);
         break;
       case 'release':
         value = await fetchReleaseTag(project.repo);
@@ -364,6 +376,10 @@ async function main(): Promise<void> {
   const rows: SummaryRow[] = [];
 
   for (const project of projects) {
+    // Visibility is a publication boundary, so verify it live before any
+    // metadata cache fallback can make a project renderable
+    const repoResponse = await fetchVerifiedRepo(project.repo);
+
     // Literal-meta projects are never fetched; surface them as static rows
     // rather than dropping them from the summary
     if (!isMetaSource(project.meta)) {
@@ -371,7 +387,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const fresh = await tryFetch(project);
+    const fresh = await tryFetch(project, repoResponse);
     const result = resolveMeta({
       key: project.repo,
       fresh,
@@ -404,7 +420,7 @@ async function main(): Promise<void> {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
-    console.error('fetch-repo-meta: unhandled error', err);
+    console.error('fetch-repo-meta failed:', err);
     process.exit(1);
   });
 }

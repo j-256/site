@@ -51,12 +51,7 @@ npm run build              # write CNAME, fetch GitHub metadata, then astro buil
 
 ## Project metadata
 
-The "ls -l" projects list reads metadata from `src/data/repo-meta.cache.json`,
-populated at build time by `scripts/fetch-repo-meta.ts`. Each project entry in
-`src/data/projects.ts` chooses its own metadata source: a hand-set string,
-GitHub `pushed_at`, or the latest release tag. The cache is committed so builds
-work offline and survive API outages, with a 7-day staleness fence that fails
-the build if a fetch can't be refreshed within that window.
+The "ls -l" projects list reads metadata from `src/data/repo-meta.cache.json`, populated at build time by `scripts/fetch-repo-meta.ts`. Each project entry in `src/data/projects.ts` chooses its own metadata source: a hand-set string, GitHub `pushed_at`, or the latest release tag. The cache is committed as a fallback when a metadata endpoint fails. Every build separately verifies that each repository is public; unverifiable or non-public entries fail closed before cached metadata can make them renderable.
 
 ## License
 
