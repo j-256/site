@@ -34,6 +34,14 @@ export const projects: Project[] = [
     desc: 'Cloudflare event relay that normalizes webhooks and email, persists every decision, and retries each sink independently',
   },
   {
+    perms: 'drwxr-xr-x',
+    owner: 'jklein',
+    meta: { source: 'pushed' },
+    name: 'd1-r2-starter',
+    repo: 'j-256/d1-r2-starter',
+    desc: 'Source factory for synchronized D1 + R2 starters across ChatGPT Sites and Cloudflare Workers, with residue-checked generation and replay-safe publishing',
+  },
+  {
     perms: '-rwxr-xr-x',
     owner: 'jklein',
     meta: { source: 'release' },
