@@ -1,6 +1,6 @@
 // Runs every layout harness in this directory against a live server and exits
 // non-zero if any of them fails. These are not vitest tests: they need a served
-// page, so vitest.config.ts's tests/**/*.test.ts pattern deliberately excludes
+// page, so vitest.config.ts's test/**/*.test.ts pattern deliberately excludes
 // them and they run only via `npm run test:visual`
 //
 // Point them at a different origin with SITE_URL, e.g. to check a production
