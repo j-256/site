@@ -1,20 +1,54 @@
 import { describe, expect, it } from 'vitest';
 import {
+  resolveGitHubToken,
   resolveMeta,
   pickLatestTag,
   parsePushedAt,
   parseReleaseTag,
   parseTagNames,
+  parseCommitRevision,
+  parseRepositoryProfile,
+  normalizeGitHubOrigin,
   classifyRow,
   staticRow,
   renderSummary,
   type CacheEntry,
   type SummaryRow,
-} from '../scripts/fetch-repo-meta';
+} from '../scripts/fetch-projects';
 
 const NOW = new Date('2026-05-23T12:00:00Z');
 const fresh = (daysAgo: number): string =>
   new Date(NOW.getTime() - daysAgo * 86400_000).toISOString();
+
+describe('resolveGitHubToken', () => {
+  it('prefers GITHUB_TOKEN without consulting the CLI', () => {
+    let cliReads = 0;
+    const token = resolveGitHubToken(' github-token ', 'gh-token', () => {
+      cliReads += 1;
+      return 'cli-token';
+    });
+    expect(token).toBe('github-token');
+    expect(cliReads).toBe(0);
+  });
+
+  it('uses GH_TOKEN when GITHUB_TOKEN is unavailable', () => {
+    let cliReads = 0;
+    const token = resolveGitHubToken(undefined, ' gh-token ', () => {
+      cliReads += 1;
+      return 'cli-token';
+    });
+    expect(token).toBe('gh-token');
+    expect(cliReads).toBe(0);
+  });
+
+  it('uses the authenticated CLI token when environment tokens are unavailable', () => {
+    expect(resolveGitHubToken(undefined, undefined, () => ' cli-token ')).toBe('cli-token');
+  });
+
+  it('returns undefined when no credential source is available', () => {
+    expect(resolveGitHubToken(' ', undefined, () => undefined)).toBeUndefined();
+  });
+});
 
 describe('resolveMeta', () => {
   it('returns the fetched value and updates the cache when fetch succeeds', () => {
@@ -173,6 +207,68 @@ describe('parseTagNames', () => {
   });
 });
 
+describe('parseCommitRevision', () => {
+  it('accepts supported Git revisions', () => {
+    expect(parseCommitRevision({ sha: 'a'.repeat(40) })).toBe('a'.repeat(40));
+    expect(parseCommitRevision({ sha: 'b'.repeat(64) })).toBe('b'.repeat(64));
+  });
+
+  it.each([{}, { sha: 'main' }, { sha: 'A'.repeat(40) }, null])('rejects invalid revisions', (body) => {
+    expect(() => parseCommitRevision(body)).toThrow(/revision/);
+  });
+});
+
+describe('parseRepositoryProfile', () => {
+  const repository = {
+    full_name: 'j-256/site',
+    name: 'site',
+    owner: { login: 'j-256' },
+    description: 'Source for a personal site',
+    html_url: 'https://github.com/j-256/site',
+    visibility: 'public',
+    archived: false,
+    disabled: false,
+    default_branch: 'main',
+  };
+
+  it('derives public display metadata from the repository response', () => {
+    expect(parseRepositoryProfile('j-256/site', repository)).toEqual({
+      name: 'site',
+      owner: 'j-256',
+      description: 'Source for a personal site',
+      url: 'https://github.com/j-256/site',
+      defaultBranch: 'main',
+    });
+  });
+
+  it('normalizes a blank description to null', () => {
+    expect(parseRepositoryProfile('j-256/site', { ...repository, description: '' }).description).toBeNull();
+  });
+
+  it('rejects a mismatched identity or URL', () => {
+    expect(() => parseRepositoryProfile('j-256/other', repository)).toThrow(/full_name/);
+    expect(() => parseRepositoryProfile('j-256/site', {
+      ...repository,
+      html_url: 'https://example.test/j-256/site',
+    })).toThrow(/URL/);
+  });
+});
+
+describe('normalizeGitHubOrigin', () => {
+  it.each([
+    'https://github.com/j-256/site.git',
+    'git@github.com:j-256/site.git',
+    'ssh://git@github.com/j-256/site.git',
+  ])('normalizes %s', (origin) => {
+    expect(normalizeGitHubOrigin(origin)).toBe('j-256/site');
+  });
+
+  it('rejects non-GitHub and malformed origins', () => {
+    expect(normalizeGitHubOrigin('https://example.test/j-256/site.git')).toBeNull();
+    expect(normalizeGitHubOrigin('not-a-url')).toBeNull();
+  });
+});
+
 describe('classifyRow', () => {
   const base = { repo: 'j-256/x', source: 'release' as const };
   // A fresh-fetch success carries a cacheUpdate; a cache fallback carries only a
@@ -240,7 +336,7 @@ describe('renderSummary', () => {
 
   it('renders a markdown table with a header and one row per project', () => {
     const md = renderSummary(rows);
-    expect(md).toMatch(/^## Repo metadata$/m);
+    expect(md).toMatch(/^## Project data$/m);
     expect(md).toMatch(/\| Project \| Source \| Value \| Status \|/);
     expect(md.match(/^\| j-256\//gm)).toHaveLength(5);
   });

@@ -13,6 +13,8 @@
 
 Source for [jklein.dev](https://jklein.dev/).
 
+![Terminal project listing on jklein.dev](docs/screenshots/cover.png)
+
 ## Stack
 
 - [Astro](https://astro.build/) (static)
@@ -37,9 +39,9 @@ npm install
 
 ```bash
 npm run dev                # http://localhost:4321 (also writes public/CNAME)
-npm test                   # vitest
+npm test                   # vitest plus the required documentation cover
 npm run typecheck          # astro check
-npm run build              # write CNAME, fetch GitHub metadata, then astro build
+npm run build              # write CNAME, fetch project data, then astro build
 ```
 
 ## Hostname change procedure
@@ -49,9 +51,13 @@ npm run build              # write CNAME, fetch GitHub metadata, then astro buil
 3. Update DNS at Cloudflare (apex CNAME flatten to `j-256.github.io`).
 4. Push. CI rebuilds with the new value, deploys, GitHub Pages claims the new domain.
 
-## Project metadata
+## Projects
 
-The "ls -l" projects list reads metadata from `src/data/repo-meta.cache.json`, populated at build time by `scripts/fetch-repo-meta.ts`. Each project entry in `src/data/projects.ts` chooses its own metadata source: a hand-set string, GitHub `pushed_at`, or the latest release tag. The cache is committed as a fallback when a metadata endpoint fails. Every build separately verifies that each repository is public; unverifiable or non-public entries fail closed before cached metadata can make them renderable.
+`src/data/projects.ts` is the site's ordered list and contains only site-specific display choices. At build time, `scripts/fetch-projects.ts` verifies each repository is public and active, derives its name, owner, description, URL, and default-branch revision from GitHub, then fetches `docs/screenshots/cover.png` at that exact revision. Missing, malformed, oversized, or unverifiable covers fail the build. Local fetches use `GITHUB_TOKEN`, then `GH_TOKEN`, then the authenticated GitHub CLI session; without a credential, requests remain anonymous and are subject to GitHub's lower rate limit.
+
+The terminal project rows remain the primary interface. On fine-pointer devices, dwelling on the compact entry line fills a progress bar before opening a non-interactive terminal-framed cover preview. The description and padded click target do not trigger it, pointer focus does not pin it open, and Escape hides it. Keyboard focus uses the same dwell; touch layouts retain the terminal list without a preview.
+
+The generated project images live under `public/project-assets/` and are ignored. `src/data/project-data.cache.json` keeps the last fetched display data and metadata values, but it cannot make a repository or cover publishable: visibility and the revision-bound cover are verified on every build. Set `PROJECT_REPOSITORY_ROOT` to a directory of local Git checkouts to read each committed cover locally while still verifying repository state and display metadata with GitHub.
 
 ## License
 

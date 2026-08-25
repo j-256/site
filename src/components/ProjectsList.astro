@@ -1,58 +1,228 @@
 ---
-import { projects, type Project, type MetaSource } from '../data/projects';
-import cache from '../data/repo-meta.cache.json';
+import { projectListings } from '../data/projects';
+import cache from '../data/project-data.cache.json';
 import { formatLsRow, META_WIDTH } from '../lib/format';
+import { projectCoverAssetPath } from '../lib/project-assets';
+import { projectPermissions } from '../lib/project-listing';
 
-function isMetaSource(meta: Project['meta']): meta is MetaSource {
-  return typeof meta === 'object' && meta !== null && 'source' in meta;
+interface ProjectData {
+  value: string;
+  name: string;
+  owner: string;
+  description: string | null;
+  url: string;
+  coverWidth: number;
+  coverHeight: number;
 }
 
-function resolveMeta(p: Project): string {
-  if (!isMetaSource(p.meta)) return p.meta;
-  const entry = (cache as Record<string, { value: string; fetchedAt: string }>)[p.repo];
-  if (!entry) {
-    throw new Error(`No cache entry for ${p.repo}; run npm run fetch-repo-meta`);
-  }
-  return entry.value;
-}
-
-const rows = projects.map(p => {
-  const meta = resolveMeta(p);
-  if (meta.length > META_WIDTH) {
-    // Surface content that outgrew the column: fitMeta clips it to keep the
-    // row aligned, so without this the shortening would be silent
-    console.warn(`meta "${meta}" for ${p.repo} exceeds ${META_WIDTH} chars and will be clipped`);
+const projectData = cache as Record<string, ProjectData>;
+const PREVIEW_DELAY_MS = 500;
+const rows = projectListings.map((listing) => {
+  const data = projectData[listing.repository];
+  if (!data) throw new Error(`No project data for ${listing.repository}; run npm run fetch-projects`);
+  if (data.value.length > META_WIDTH) {
+    console.warn(`meta "${data.value}" for ${listing.repository} exceeds ${META_WIDTH} chars and will be clipped`);
   }
   return {
-    href: `https://github.com/${p.repo}`,
+    ...data,
     prefix: formatLsRow({
-      perms: p.perms,
-      owner: p.owner,
-      meta,
+      perms: projectPermissions(listing.artifact),
+      owner: data.owner,
+      meta: data.value,
     }),
-    name: p.name,
-    desc: p.desc,
+    cover: `/${projectCoverAssetPath(listing.repository)}`,
   };
 });
 ---
-<ul class="projects" aria-label="Projects" data-row-count={rows.length}>
-  {rows.map(row => (
+<ul
+  class="projects"
+  aria-label="Projects"
+  data-row-count={rows.length}
+  data-preview-delay={PREVIEW_DELAY_MS}
+  style={`--preview-delay: ${PREVIEW_DELAY_MS}ms`}
+>
+  {rows.map((row) => (
     <li class="project-row">
-      <a href={row.href} class="row-link" target="_blank" rel="noopener noreferrer" draggable="false"><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span><span class="annotation"># {row.desc}</span></a>
+      <a
+        href={row.url}
+        class="row-link"
+        target="_blank"
+        rel="noopener noreferrer"
+        draggable="false"
+        data-project-preview-link
+        data-preview-name={row.name}
+        data-preview-src={row.cover}
+        data-preview-width={row.coverWidth}
+        data-preview-height={row.coverHeight}
+      ><span class="preview-trigger" data-project-preview-trigger><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span><span class="preview-progress" aria-hidden="true"></span></span><span class="annotation"># {row.description ?? 'View repository on GitHub'}</span></a>
     </li>
   ))}
 </ul>
 
+<div class="project-preview" data-project-preview aria-hidden="true">
+  <figure class="preview-window">
+    <figcaption class="preview-command"><span><span class="preview-prompt">$</span> preview <span data-preview-name></span></span><span class="preview-dismiss">[esc] hide</span></figcaption>
+    <div class="preview-image-frame">
+      <span class="preview-loading" data-preview-loading>loading docs/screenshots/cover.png...</span>
+      <img class="preview-image" data-preview-image alt="" decoding="async" />
+    </div>
+    <p class="preview-path">docs/screenshots/cover.png</p>
+  </figure>
+</div>
+
 <script is:inline>
-  // Selecting text inside a full-row <a> still fires click on mouseup, which
-  // navigates away. Cancel the click when a non-empty selection exists
-  document.addEventListener('click', function (e) {
-    var link = e.target.closest && e.target.closest('.row-link');
-    if (!link) return;
-    var sel = window.getSelection();
-    if (sel && sel.toString().length > 0) {
-      e.preventDefault();
+  var previewQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+  var previewLayer = document.querySelector('[data-project-preview]');
+  var previewImage = previewLayer && previewLayer.querySelector('[data-preview-image]');
+  var previewName = previewLayer && previewLayer.querySelector('[data-preview-name]');
+  var previewStatus = previewLayer && previewLayer.querySelector('[data-preview-loading]');
+  var previewLinks = document.querySelectorAll('[data-project-preview-link]');
+  var projectList = document.querySelector('.projects');
+  var previewDelay = Number(projectList && projectList.getAttribute('data-preview-delay'));
+  var previewTimer = 0;
+  var pendingLink = null;
+  var hoveredLink = null;
+  var focusedLink = null;
+  var activeLink = null;
+  var dismissedLink = null;
+  var activeSource = '';
+  var imageFailed = false;
+  var previewLoadingMessage = 'loading docs/screenshots/cover.png...';
+  var previewErrorMessage = 'cover unavailable - leave and retry';
+
+  function currentIntent() {
+    return hoveredLink || focusedLink;
+  }
+
+  function clearPendingPreview() {
+    window.clearTimeout(previewTimer);
+    previewTimer = 0;
+    if (pendingLink) pendingLink.removeAttribute('data-preview-pending');
+    pendingLink = null;
+  }
+
+  function hidePreview() {
+    if (activeLink) activeLink.removeAttribute('data-preview-active');
+    activeLink = null;
+    if (previewLayer) previewLayer.removeAttribute('data-visible');
+  }
+
+  function showPreview(link) {
+    if (!previewQuery.matches || !previewLayer || !previewImage || !previewName) return;
+    var source = link.getAttribute('data-preview-src');
+    var name = link.getAttribute('data-preview-name');
+    if (!source || !name) return;
+    previewName.textContent = name;
+    previewLayer.removeAttribute('data-ready');
+    previewLayer.removeAttribute('data-error');
+    if (previewStatus) previewStatus.textContent = previewLoadingMessage;
+    if (source !== activeSource || imageFailed) {
+      activeSource = source;
+      imageFailed = false;
+      previewImage.setAttribute('width', link.getAttribute('data-preview-width') || '1');
+      previewImage.setAttribute('height', link.getAttribute('data-preview-height') || '1');
+      if (previewImage.getAttribute('src') === source) previewImage.removeAttribute('src');
+      previewImage.setAttribute('src', source);
+    } else if (previewImage.complete && previewImage.naturalWidth > 0) {
+      previewLayer.setAttribute('data-ready', '');
     }
+    activeLink = link;
+    activeLink.setAttribute('data-preview-active', '');
+    previewLayer.setAttribute('data-visible', '');
+  }
+
+  function queuePreview(link) {
+    clearPendingPreview();
+    hidePreview();
+    pendingLink = link;
+    pendingLink.setAttribute('data-preview-pending', '');
+    previewTimer = window.setTimeout(function () {
+      var shouldShow = pendingLink === link && currentIntent() === link && dismissedLink !== link;
+      clearPendingPreview();
+      if (shouldShow) showPreview(link);
+    }, previewDelay);
+  }
+
+  function syncPreview() {
+    var link = currentIntent();
+    if (!previewQuery.matches || !link || dismissedLink === link) {
+      clearPendingPreview();
+      hidePreview();
+      return;
+    }
+    if (activeLink === link || pendingLink === link) return;
+    queuePreview(link);
+  }
+
+  if (previewImage && previewLayer) {
+    previewImage.addEventListener('load', function () {
+      if (previewImage.getAttribute('src') !== activeSource) return;
+      imageFailed = false;
+      previewLayer.removeAttribute('data-error');
+      previewLayer.setAttribute('data-ready', '');
+    });
+    previewImage.addEventListener('error', function () {
+      if (previewImage.getAttribute('src') !== activeSource) return;
+      imageFailed = true;
+      previewLayer.removeAttribute('data-ready');
+      previewLayer.setAttribute('data-error', '');
+      if (previewStatus) previewStatus.textContent = previewErrorMessage;
+    });
+  }
+
+  previewLinks.forEach(function (link) {
+    var trigger = link.querySelector('[data-project-preview-trigger]');
+    if (!trigger) return;
+    trigger.addEventListener('mouseenter', function () {
+      hoveredLink = link;
+      if (dismissedLink === link) dismissedLink = null;
+      syncPreview();
+    });
+    trigger.addEventListener('mouseleave', function () {
+      if (hoveredLink === link) hoveredLink = null;
+      syncPreview();
+    });
+    link.addEventListener('focus', function () {
+      if (!link.matches(':focus-visible')) return;
+      focusedLink = link;
+      if (dismissedLink === link) dismissedLink = null;
+      syncPreview();
+    });
+    link.addEventListener('blur', function () {
+      if (focusedLink === link) focusedLink = null;
+      if (dismissedLink === link) dismissedLink = null;
+      syncPreview();
+    });
+  });
+
+  previewQuery.addEventListener('change', function () {
+    clearPendingPreview();
+    hoveredLink = null;
+    focusedLink = null;
+    dismissedLink = null;
+    hidePreview();
+  });
+
+  document.addEventListener('pointerdown', function () {
+    if (!focusedLink) return;
+    focusedLink = null;
+    syncPreview();
+  }, true);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') return;
+    var link = currentIntent() || pendingLink || activeLink;
+    if (!link) return;
+    dismissedLink = link;
+    clearPendingPreview();
+    hidePreview();
+  });
+
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest && event.target.closest('.row-link');
+    if (!link) return;
+    var selection = window.getSelection();
+    if (selection && selection.toString().length > 0) event.preventDefault();
   });
 </script>
 
@@ -61,39 +231,129 @@ const rows = projects.map(p => {
   .project-row { padding: 0.125em 0 0.5em; }
   .row-link {
     display: block;
-    text-decoration: none;
     min-height: 44px;
-    /* Rows wrap at field boundaries rather than scrolling. The hanging
-       indent puts continuation lines under the first, the way a narrow
-       terminal wraps long output */
+    text-decoration: none;
     white-space: pre-wrap;
+  }
+  .preview-trigger {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
     padding-left: 2ch;
     text-indent: -2ch;
   }
+  .preview-progress {
+    position: absolute;
+    right: 0;
+    bottom: -0.15em;
+    left: 0;
+    height: 2px;
+    overflow: hidden;
+    visibility: hidden;
+    background: var(--fg-dim);
+    pointer-events: none;
+  }
+  .preview-progress::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background: var(--fg-bright);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  .row-link[data-preview-pending] .preview-progress,
+  .row-link[data-preview-active] .preview-progress { visibility: visible; }
+  .row-link[data-preview-pending] .preview-progress::after {
+    animation: preview-charge var(--preview-delay) linear forwards;
+  }
+  .row-link[data-preview-active] .preview-progress::after { transform: scaleX(1); }
+  @keyframes preview-charge {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
   .prefix { white-space: pre; }
   .name {
-    font-weight: 700;
     color: var(--fg-bright);
+    font-weight: 700;
     white-space: nowrap;
   }
   .annotation {
     display: block;
-    color: var(--fg-dim);
-    padding-left: 2ch;
-    text-indent: 0;
     max-width: var(--content-width);
+    padding-left: 2ch;
+    color: var(--fg-dim);
+    text-indent: 0;
     user-select: text;
   }
   .row-link:hover .prefix,
   .row-link:focus-visible .prefix { color: var(--fg-bright); }
   .row-link:hover .annotation,
   .row-link:focus-visible .annotation { color: var(--fg); }
-  /* Colour alone is a weak focus signal, and the sticky header can overlap a
-     row scrolled beneath it. An outline plus scroll-margin keeps the focused
-     row both visible and unobscured */
   .row-link:focus-visible {
     outline: 2px solid var(--fg-bright);
     outline-offset: 2px;
     scroll-margin-top: 5em;
+  }
+  .project-preview { display: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .project-preview {
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: clamp(1rem, 4vw, 3rem);
+      pointer-events: none;
+      visibility: hidden;
+    }
+    .project-preview[data-visible] { visibility: visible; }
+    .preview-window {
+      width: min(48rem, 100%);
+      overflow: hidden;
+      border: 1px solid var(--fg-bright);
+      background: var(--bg);
+    }
+    .preview-command,
+    .preview-path {
+      padding: 0.35rem 0.6rem;
+      color: var(--fg-dim);
+      font-size: 0.8rem;
+    }
+    .preview-command {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid var(--fg-dim);
+    }
+    .preview-path {
+      margin: 0;
+      border-top: 1px solid var(--fg-dim);
+    }
+    .preview-prompt,
+    [data-preview-name] { color: var(--fg-bright); }
+    .preview-dismiss { white-space: nowrap; }
+    .preview-image-frame {
+      position: relative;
+      display: grid;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      place-items: center;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .preview-loading {
+      color: var(--fg-dim);
+      font-size: 0.8rem;
+    }
+    .project-preview[data-error] .preview-loading { color: var(--fg-bright); }
+    .preview-image {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+    }
+    .project-preview[data-ready] .preview-loading { visibility: hidden; }
+    .project-preview[data-ready] .preview-image { opacity: 1; }
   }
 </style>

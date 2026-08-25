@@ -4,10 +4,7 @@ Operational and style guidance for AI agents working in this repo.
 
 ## Project shape
 
-This is a single-page static site built with Astro. The page composes from
-small components in `src/components/`. Content lives in `src/data/`. Pure
-helpers go in `src/lib/` and are unit-tested with Vitest. Build-time data
-fetching is in `scripts/fetch-repo-meta.ts`.
+This is a single-page static site built with Astro. The page composes from small components in `src/components/`. Content lives in `src/data/`. Pure helpers go in `src/lib/` and are unit-tested with Vitest. Build-time project data fetching is in `scripts/fetch-projects.ts`.
 
 ## Conventions
 
@@ -37,7 +34,4 @@ fetching is in `scripts/fetch-repo-meta.ts`.
 
 ## Style aesthetic
 
-The terminal aesthetic is load-bearing. Don't add bright accent colors,
-gradients, scroll animations, parallax, hover-glow effects, or other
-"corporate-portfolio" treatments. Match the existing palette
-(`src/styles/global.css`).
+The terminal aesthetic is load-bearing. Don't add bright accent colors, gradients, scroll animations, parallax, hover-glow effects, or other "corporate-showcase" treatments. Match the existing palette (`src/styles/global.css`).

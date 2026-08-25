@@ -12,3 +12,18 @@ export function assertPublicRepository(repo: string, body: unknown): void {
     throw new Error(`Refusing to publish ${repo}: repository visibility is ${body.visibility}`);
   }
 }
+
+export function assertListedRepository(repo: string, body: unknown): void {
+  assertPublicRepository(repo, body);
+  if (!isRecord(body) || typeof body.archived !== 'boolean') {
+    throw new Error(`Cannot verify ${repo} is active: repository response missing boolean archived`);
+  }
+  if (body.archived) throw new Error(`Refusing to list ${repo}: repository is archived`);
+  if (typeof body.disabled !== 'boolean') {
+    throw new Error(`Cannot verify ${repo} is active: repository response missing boolean disabled`);
+  }
+  if (body.disabled) throw new Error(`Refusing to list ${repo}: repository is disabled`);
+  if (typeof body.default_branch !== 'string' || body.default_branch.trim() === '') {
+    throw new Error(`Cannot resolve ${repo}: repository response missing default_branch`);
+  }
+}
