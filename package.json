@@ -19,6 +19,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro check",
+    "capture:cover": "tsx scripts/capture-cover.ts",
     "check:docs-cover": "node scripts/check-docs-cover.mjs",
     "test": "npm run test:unit && npm run check:docs-cover",
     "test:unit": "vitest run --passWithNoTests",

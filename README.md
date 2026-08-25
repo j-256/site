@@ -42,7 +42,10 @@ npm run dev                # http://localhost:4321 (also writes public/CNAME)
 npm test                   # vitest plus the required documentation cover
 npm run typecheck          # astro check
 npm run build              # write CNAME, fetch project data, then astro build
+npm run capture:cover      # build locally and refresh the documentation cover
 ```
+
+Install the matching browser with `npx playwright install chromium` before using the cover command. It renders the candidate production build locally at 1440x1000 with dark colors and reduced motion, then replaces `docs/screenshots/cover.png`; it does not capture or deploy the live site.
 
 ## Hostname change procedure
 
