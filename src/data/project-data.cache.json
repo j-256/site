@@ -1,7 +1,7 @@
 {
   "j-256/stowplan": {
     "value": "v1.2.2",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "stowplan",
     "owner": "j-256",
     "description": "Mobile-first, local-first organizer for rooms, cabinets, drawers, boxes, and bins. Label physical spaces, count inventory fast, search structured data, and generate explainable move plans that keep working offline.",
@@ -11,7 +11,7 @@
   },
   "j-256/hookrelay": {
     "value": "v1.2.0",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "hookrelay",
     "owner": "j-256",
     "description": "Small, extensible webhook receiver for Cloudflare Workers",
@@ -21,7 +21,7 @@
   },
   "j-256/d1-r2-starter-factory": {
     "value": "2026-08-25",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "d1-r2-starter-factory",
     "owner": "j-256",
     "description": "Source factory for synchronized D1 + R2 starters across ChatGPT Sites and Cloudflare Workers, with verified generation and replay-safe publishing.",
@@ -31,7 +31,7 @@
   },
   "j-256/reorg": {
     "value": "v0.5.0",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "reorg",
     "owner": "j-256",
     "description": "Plan directory reorganizations yourself or with AI agents in a shared browser workspace, then safely apply changes with generated undo scripts.",
@@ -41,7 +41,7 @@
   },
   "j-256/ccam": {
     "value": "v0.1.1",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "ccam",
     "owner": "j-256",
     "description": "CLI and SDK for the Salesforce Commerce Cloud Account Manager REST API",
@@ -50,8 +50,8 @@
     "coverHeight": 720
   },
   "j-256/agent-skills": {
-    "value": "2026-08-25",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "value": "v0.1.0",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "agent-skills",
     "owner": "j-256",
     "description": "Some useful AI agent Skills",
@@ -60,8 +60,8 @@
     "coverHeight": 840
   },
   "j-256/stream-eval": {
-    "value": "2026-08-25",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "value": "v0.2.0",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "stream-eval",
     "owner": "j-256",
     "description": "Deterministic assertion harness for claude -p stream-json transcripts",
@@ -71,7 +71,7 @@
   },
   "j-256/site": {
     "value": "2026-08-25",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "site",
     "owner": "j-256",
     "description": "Source for jklein.dev",
@@ -81,7 +81,7 @@
   },
   "j-256/qlomni": {
     "value": "v1.8.0",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "qlomni",
     "owner": "j-256",
     "description": "macOS QuickLook Preview Extension for text files macOS doesn't preview",
@@ -91,7 +91,7 @@
   },
   "j-256/git-crypt-vscode": {
     "value": "v3.0.1",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "git-crypt-vscode",
     "owner": "j-256",
     "description": "VSCode extension that makes git-crypt repositories work in the Source Control panel",
@@ -101,7 +101,7 @@
   },
   "j-256/persistent-clicker": {
     "value": "2026-08-22",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "persistent-clicker",
     "owner": "j-256",
     "description": "Per-tab Chrome interval clicker that survives page navigation",
@@ -121,7 +121,7 @@
   },
   "j-256/sh": {
     "value": "2026-08-24",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "sh",
     "owner": "j-256",
     "description": "Shellscript utilities big and small; no install required",
@@ -131,7 +131,7 @@
   },
   "j-256/p12-generator": {
     "value": "2026-08-24",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "p12-generator",
     "owner": "j-256",
     "description": null,
@@ -141,7 +141,7 @@
   },
   "j-256/rover-dumper": {
     "value": "v1.1.0",
-    "fetchedAt": "2026-08-25T08:47:26.311Z",
+    "fetchedAt": "2026-08-25T10:23:13.284Z",
     "name": "rover-dumper",
     "owner": "j-256",
     "description": "Bulk download your pet's photos from Rover.com",
