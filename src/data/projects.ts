@@ -27,7 +27,7 @@ export interface ProjectListing {
 export const projectListings: readonly ProjectListing[] = Object.freeze([
   { repository: 'j-256/stowplan', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/hookrelay', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
-  { repository: 'j-256/d1-r2-starter-factory', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.PUSHED } },
+  { repository: 'j-256/d1-r2-starter-factory', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/reorg', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/ccam', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/agent-skills', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
@@ -35,11 +35,11 @@ export const projectListings: readonly ProjectListing[] = Object.freeze([
   { repository: 'j-256/site', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.PUSHED } },
   { repository: 'j-256/qlomni', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/git-crypt-vscode', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
-  { repository: 'j-256/persistent-clicker', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.PUSHED } },
-  { repository: 'j-256/bm_keyvalidator', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.STATIC, value: 'stable' } },
+  { repository: 'j-256/persistent-clicker', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
+  { repository: 'j-256/bm_keyvalidator', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/sh', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.PUSHED } },
-  { repository: 'j-256/p12-generator', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.PUSHED } },
-  { repository: 'j-256/rover-dumper', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.TAG } },
+  { repository: 'j-256/p12-generator', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
+  { repository: 'j-256/rover-dumper', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
 ]);
 
 export const projectRepositories = Object.freeze(
