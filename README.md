@@ -20,14 +20,12 @@ Source for [jklein.dev](https://jklein.dev/).
 - [Astro](https://astro.build/) (static)
 - TypeScript (strict)
 - Vanilla CSS, [JetBrains Mono](https://www.jetbrains.com/lp/mono/) (self-hosted, OFL)
-- GitHub Pages (custom domain via generated `public/CNAME`, Cloudflare CNAME flattening at the apex)
-- GitHub Actions for build + deploy
+- Cloudflare Workers Static Assets with a custom domain
+- GitHub Actions for verification and direct deployment
 
 ## Setup
 
-The hostname comes from a single `SITE_HOST` environment variable, used everywhere
-the deployed domain appears (canonical link, OG meta, JSON-LD, sitemap, robots.txt,
-the generated `public/CNAME`). The build fails loud if it's unset.
+The hostname comes from a single `SITE_HOST` environment variable, used everywhere the deployed domain appears (canonical link, OG meta, JSON-LD, sitemap, robots.txt, the generated `public/CNAME`). The build fails loud if it's unset.
 
 ```bash
 cp .env.example .env       # contains SITE_HOST=jklein.dev
@@ -43,16 +41,23 @@ npm test                   # vitest plus the required documentation cover
 npm run typecheck          # astro check
 npm run build              # write CNAME, fetch project data, then astro build
 npm run capture:cover      # build locally and refresh the documentation cover
+npm run deploy:dry-run     # validate the current dist artifact with Wrangler
 ```
 
 Install the matching browser with `npx playwright install chromium` before using the cover command. It renders the candidate production build locally at 1440x1000 with dark colors and reduced motion, then replaces `docs/screenshots/cover.png`; it does not capture or deploy the live site.
+
+## Deployment
+
+GitHub Actions owns the production pipeline. Every push to `main`, weekly refresh, and manual workflow run installs the locked dependencies, runs the tests, builds once, and deploys that exact `dist` directory to the `site` Cloudflare Worker through Wrangler. Pull requests perform the same verification without deploying. The deploy step receives `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from repository Actions secrets; `wrangler.jsonc` contains only non-secret deployment configuration.
+
+`npm run deploy` publishes the existing `dist` directory and assumes it has already been verified. Use `npm run deploy:dry-run` to validate the artifact and configuration without publishing.
 
 ## Hostname change procedure
 
 1. Update `.env` locally.
 2. Update the GitHub repo Variable: `gh variable set SITE_HOST --body 'newhost.example' --repo j-256/site`
-3. Update DNS at Cloudflare (apex CNAME flatten to `j-256.github.io`).
-4. Push. CI rebuilds with the new value, deploys, GitHub Pages claims the new domain.
+3. Update the Worker's custom domain and its DNS record in Cloudflare.
+4. Push. GitHub Actions rebuilds with the new value and deploys the verified artifact.
 
 ## Projects
 

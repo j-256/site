@@ -16,6 +16,8 @@
     "predev": "npm run write-cname && npm run write-og && npm run fetch-projects",
     "fetch-projects": "tsx --env-file-if-exists=.env scripts/fetch-projects.ts",
     "build": "npm run fetch-projects && astro build",
+    "deploy": "wrangler deploy",
+    "deploy:dry-run": "wrangler deploy --dry-run",
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro check",
@@ -37,6 +39,7 @@
     "@vitest/ui": "^4.1.10",
     "playwright": "^1.62.1",
     "tsx": "^4.23.12",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "wrangler": "4.126.0"
   }
 }
