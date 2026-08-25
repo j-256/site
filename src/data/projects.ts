@@ -37,8 +37,8 @@ export const projects: Project[] = [
     perms: 'drwxr-xr-x',
     owner: 'jklein',
     meta: { source: 'pushed' },
-    name: 'd1-r2-starter',
-    repo: 'j-256/d1-r2-starter',
+    name: 'd1-r2-starter-factory',
+    repo: 'j-256/d1-r2-starter-factory',
     desc: 'Source factory for synchronized D1 + R2 starters across ChatGPT Sites and Cloudflare Workers, with residue-checked generation and replay-safe publishing',
   },
   {
