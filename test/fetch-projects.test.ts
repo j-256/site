@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FETCH_EXIT_STATUS,
+  fetchHelp,
+  parseFetchArguments,
   resolveGitHubToken,
   resolveMeta,
   pickLatestTag,
@@ -19,6 +22,41 @@ import {
 const NOW = new Date('2026-05-23T12:00:00Z');
 const fresh = (daysAgo: number): string =>
   new Date(NOW.getTime() - daysAgo * 86400_000).toISOString();
+
+describe('fetch-projects CLI', () => {
+  it('fetches runtime data by default and accepts an option terminator', () => {
+    expect(parseFetchArguments([])).toEqual({ mode: 'fetch', updateCache: false });
+    expect(parseFetchArguments(['--'])).toEqual({ mode: 'fetch', updateCache: false });
+  });
+
+  it('supports explicit cache refresh and bundled short flags', () => {
+    expect(parseFetchArguments(['-u'])).toEqual({ mode: 'fetch', updateCache: true });
+    expect(parseFetchArguments(['--update-cache'])).toEqual({ mode: 'fetch', updateCache: true });
+    expect(parseFetchArguments(['-uh'])).toEqual({ mode: 'help' });
+  });
+
+  it('supports both help flags', () => {
+    expect(parseFetchArguments(['-h'])).toEqual({ mode: 'help' });
+    expect(parseFetchArguments(['--help'])).toEqual({ mode: 'help' });
+  });
+
+  it('rejects unknown options and positional arguments as usage errors', () => {
+    expect(() => parseFetchArguments(['--verbose'])).toThrow(
+      expect.objectContaining({ exitCode: FETCH_EXIT_STATUS.USAGE_ERROR })
+    );
+    expect(() => parseFetchArguments(['project'])).toThrow(/unexpected argument/);
+    expect(() => parseFetchArguments(['--', '--help'])).toThrow(/unexpected argument/);
+  });
+
+  it('documents both fetch modes, environment, and exit statuses', () => {
+    const help = fetchHelp();
+    expect(help).toContain('npm run fetch-projects');
+    expect(help).toContain('npm run refresh-project-cache');
+    expect(help).toContain('--update-cache');
+    expect(help).toContain('PROJECT_REPOSITORY_ROOT');
+    expect(help).toContain('Exit statuses:');
+  });
+});
 
 describe('resolveGitHubToken', () => {
   it('prefers GITHUB_TOKEN without consulting the CLI', () => {

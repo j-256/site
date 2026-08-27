@@ -40,6 +40,7 @@ npm run dev                # http://localhost:4321 (also writes public/CNAME)
 npm test                   # vitest plus the required documentation cover
 npm run typecheck          # astro check
 npm run build              # write CNAME, fetch project data, then astro build
+npm run refresh-project-cache # refresh the committed project fallback
 npm run capture:cover      # build locally and refresh the documentation cover
 npm run deploy:dry-run     # validate the current dist artifact with Wrangler
 ```
@@ -71,7 +72,7 @@ GitHub Actions owns the production pipeline. Every push to `main`, weekly refres
 
 The terminal project rows remain the primary interface. On fine-pointer devices, dwelling on the compact entry line fills a progress bar before opening a non-interactive terminal-framed cover preview. The description and padded click target do not trigger it, pointer focus does not pin it open, and Escape hides it. Keyboard focus uses the same dwell; touch layouts retain the terminal list without a preview.
 
-The generated project images live under `public/project-assets/` and are ignored. `src/data/project-data.cache.json` keeps the last fetched display data and metadata values, but it cannot make a repository or cover publishable: visibility and the revision-bound cover are verified on every build. Set `PROJECT_REPOSITORY_ROOT` to a directory of local Git checkouts to read each committed cover locally while still verifying repository state and display metadata with GitHub.
+Routine development and builds write fetched display data to the ignored `src/data/project-data.runtime.json`, so starting the site does not modify tracked files. `src/data/project-data.cache.json` is the committed fallback snapshot used when runtime data is unavailable. Whichever data file is loaded supplies fallback values when an individual metadata lookup fails. Run `npm run refresh-project-cache` when a verified result should replace the committed snapshot. Neither data file can make a repository or cover publishable: visibility and the revision-bound cover are verified on every fetch. Generated project images live under the ignored `public/project-assets/`. Set `PROJECT_REPOSITORY_ROOT` to a directory of local Git checkouts to read each committed cover locally while still verifying repository state and display metadata with GitHub.
 
 ## License
 

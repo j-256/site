@@ -8,4 +8,5 @@ dist/
 public/CNAME
 public/og.png
 public/project-assets/
+src/data/project-data.runtime.json
 .claude/worktrees/

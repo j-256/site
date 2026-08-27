@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { rename, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -12,7 +12,6 @@ import { assertProjectCoverImage } from '../src/lib/project-assets';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(HERE, '..');
 const COVER_PATH = resolve(PROJECT_ROOT, 'docs/screenshots/cover.png');
-const CACHE_PATH = resolve(PROJECT_ROOT, 'src/data/project-data.cache.json');
 const PREVIEW_HOST = '127.0.0.1';
 
 export const CAPTURE_VIEWPORT = Object.freeze({ width: 1440, height: 1000 });
@@ -80,24 +79,6 @@ export function parseCaptureArguments(argumentsList: readonly string[]): Capture
   return help ? 'help' : 'capture';
 }
 
-async function readOptionalFile(path: string): Promise<Buffer | null> {
-  try {
-    return await readFile(path);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw error;
-  }
-}
-
-async function restoreFile(path: string, original: Buffer | null): Promise<void> {
-  if (original === null) {
-    await rm(path, { force: true });
-    return;
-  }
-  const current = await readOptionalFile(path);
-  if (!current?.equals(original)) await writeFile(path, original);
-}
-
 function runBuild(): void {
   const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const result = spawnSync(command, ['run', 'build'], {
@@ -129,99 +110,93 @@ export function verifyBrowserExecutable(executablePath: string): void {
 
 async function captureCover(): Promise<void> {
   verifyBrowserExecutable(chromium.executablePath());
-  const originalCache = await readOptionalFile(CACHE_PATH);
+  runBuild();
+
+  const server = await preview({
+    root: PROJECT_ROOT,
+    logLevel: 'silent',
+    server: { host: PREVIEW_HOST, port: 0 },
+  });
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 
   try {
-    runBuild();
-
-    const server = await preview({
-      root: PROJECT_ROOT,
-      logLevel: 'silent',
-      server: { host: PREVIEW_HOST, port: 0 },
-    });
-    let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
-
     try {
-      try {
-        browser = await chromium.launch();
-      } catch (error) {
-        const detail = error instanceof Error ? error.message : String(error);
-        throw new CaptureCliError(
-          `Playwright Chromium could not launch: ${detail}`,
-          EXIT_STATUS.MISSING_DEPENDENCY
-        );
-      }
-      const context = await browser.newContext(CAPTURE_CONTEXT);
-      const page = await context.newPage();
-      const browserErrors: string[] = [];
-      page.on('pageerror', error => browserErrors.push(error.message));
-      page.on('console', message => {
-        if (message.type() === 'error') browserErrors.push(message.text());
-      });
-      const url = `http://${PREVIEW_HOST}:${server.port}/`;
-      const response = await page.goto(url, { waitUntil: 'networkidle' });
-      if (!response?.ok()) {
-        throw new Error(`preview returned HTTP ${response?.status() ?? 'unknown'}`);
-      }
+      browser = await chromium.launch();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new CaptureCliError(
+        `Playwright Chromium could not launch: ${detail}`,
+        EXIT_STATUS.MISSING_DEPENDENCY
+      );
+    }
+    const context = await browser.newContext(CAPTURE_CONTEXT);
+    const page = await context.newPage();
+    const browserErrors: string[] = [];
+    page.on('pageerror', error => browserErrors.push(error.message));
+    page.on('console', message => {
+      if (message.type() === 'error') browserErrors.push(message.text());
+    });
+    const url = `http://${PREVIEW_HOST}:${server.port}/`;
+    const response = await page.goto(url, { waitUntil: 'networkidle' });
+    if (!response?.ok()) {
+      throw new Error(`preview returned HTTP ${response?.status() ?? 'unknown'}`);
+    }
 
-      const state = await page.evaluate(async () => {
-        await document.fonts.ready;
-        const overlay = document.querySelector(
-          '[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay'
-        );
-        return {
-          bodyHasContent: document.body.innerText.trim().length > 0,
-          hasBoot: document.querySelector('[data-boot]') !== null,
-          hasProjects:
-            Number(document.querySelector('[data-row-count]')?.getAttribute('data-row-count')) > 0,
-          hasOverlay: overlay !== null,
-          previewClosed:
-            !document.querySelector('[data-project-preview]')?.hasAttribute('data-visible'),
-          scrollX: window.scrollX,
-          scrollY: window.scrollY,
-        };
-      });
-      if (!state.bodyHasContent || !state.hasBoot || !state.hasProjects) {
-        throw new Error('preview did not render the expected page content');
-      }
-      if (state.hasOverlay) throw new Error('preview rendered a framework error overlay');
-      if (!state.previewClosed) throw new Error('preview opened before the cover was captured');
-      if (browserErrors.length > 0) {
-        throw new Error(`preview reported browser errors: ${browserErrors.join('; ')}`);
-      }
-      if (state.scrollX !== 0 || state.scrollY !== 0) {
-        throw new Error(`preview opened at scroll position ${state.scrollX},${state.scrollY}`);
-      }
+    const state = await page.evaluate(async () => {
+      await document.fonts.ready;
+      const overlay = document.querySelector(
+        '[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay'
+      );
+      return {
+        bodyHasContent: document.body.innerText.trim().length > 0,
+        hasBoot: document.querySelector('[data-boot]') !== null,
+        hasProjects:
+          Number(document.querySelector('[data-row-count]')?.getAttribute('data-row-count')) > 0,
+        hasOverlay: overlay !== null,
+        previewClosed:
+          !document.querySelector('[data-project-preview]')?.hasAttribute('data-visible'),
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+      };
+    });
+    if (!state.bodyHasContent || !state.hasBoot || !state.hasProjects) {
+      throw new Error('preview did not render the expected page content');
+    }
+    if (state.hasOverlay) throw new Error('preview rendered a framework error overlay');
+    if (!state.previewClosed) throw new Error('preview opened before the cover was captured');
+    if (browserErrors.length > 0) {
+      throw new Error(`preview reported browser errors: ${browserErrors.join('; ')}`);
+    }
+    if (state.scrollX !== 0 || state.scrollY !== 0) {
+      throw new Error(`preview opened at scroll position ${state.scrollX},${state.scrollY}`);
+    }
 
-      const image = await page.screenshot({
-        animations: 'disabled',
-        fullPage: false,
-        type: 'png',
-      });
-      const dimensions = assertProjectCoverImage(image, { contentType: 'image/png' });
-      if (
-        dimensions.width !== CAPTURE_VIEWPORT.width
-        || dimensions.height !== CAPTURE_VIEWPORT.height
-      ) {
-        throw new Error(
-          `captured ${dimensions.width}x${dimensions.height}, expected `
-          + `${CAPTURE_VIEWPORT.width}x${CAPTURE_VIEWPORT.height}`
-        );
-      }
+    const image = await page.screenshot({
+      animations: 'disabled',
+      fullPage: false,
+      type: 'png',
+    });
+    const dimensions = assertProjectCoverImage(image, { contentType: 'image/png' });
+    if (
+      dimensions.width !== CAPTURE_VIEWPORT.width
+      || dimensions.height !== CAPTURE_VIEWPORT.height
+    ) {
+      throw new Error(
+        `captured ${dimensions.width}x${dimensions.height}, expected `
+        + `${CAPTURE_VIEWPORT.width}x${CAPTURE_VIEWPORT.height}`
+      );
+    }
 
-      const temporaryPath = `${COVER_PATH}.${process.pid}.tmp`;
-      try {
-        await writeFile(temporaryPath, image, { flag: 'wx' });
-        await rename(temporaryPath, COVER_PATH);
-      } finally {
-        await rm(temporaryPath, { force: true });
-      }
+    const temporaryPath = `${COVER_PATH}.${process.pid}.tmp`;
+    try {
+      await writeFile(temporaryPath, image, { flag: 'wx' });
+      await rename(temporaryPath, COVER_PATH);
     } finally {
-      if (browser) await browser.close();
-      await server.stop();
+      await rm(temporaryPath, { force: true });
     }
   } finally {
-    await restoreFile(CACHE_PATH, originalCache);
+    if (browser) await browser.close();
+    await server.stop();
   }
 
   console.log(`Wrote ${COVER_PATH}`);

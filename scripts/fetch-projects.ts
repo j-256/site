@@ -16,6 +16,12 @@ import {
   assertProjectRepository,
   projectCoverAssetPath,
 } from '../src/lib/project-assets';
+import {
+  loadProjectData,
+  writeProjectData,
+  type ProjectData,
+  type ProjectDataEntry,
+} from '../src/lib/project-data-store';
 import { assertListedRepository } from '../src/lib/repo-visibility';
 
 export interface CacheEntry {
@@ -23,16 +29,8 @@ export interface CacheEntry {
   fetchedAt: string;
 }
 
-export interface ProjectCacheEntry extends CacheEntry {
-  name: string;
-  owner: string;
-  description: string | null;
-  url: string;
-  coverWidth: number;
-  coverHeight: number;
-}
-
-export type ProjectCache = Record<string, ProjectCacheEntry>;
+export type ProjectCacheEntry = ProjectDataEntry;
+export type ProjectCache = ProjectData;
 
 export interface FreshResult {
   ok: boolean;
@@ -55,6 +53,29 @@ export interface ResolveOutput {
 
 export type MetaSourceKind = 'pushed' | 'release' | 'tag' | 'static';
 export type RowStatus = 'fresh' | 'cache' | 'error';
+
+export const FETCH_MODE = Object.freeze({
+  FETCH: 'fetch',
+  HELP: 'help',
+} as const);
+
+export const FETCH_EXIT_STATUS = Object.freeze({
+  RUNTIME_FAILURE: 1,
+  USAGE_ERROR: 2,
+} as const);
+
+export type FetchCommand =
+  | { mode: typeof FETCH_MODE.FETCH; updateCache: boolean }
+  | { mode: typeof FETCH_MODE.HELP };
+
+export class FetchCliError extends Error {
+  constructor(
+    message: string,
+    readonly exitCode: number
+  ) {
+    super(message);
+  }
+}
 
 export interface SummaryRow {
   repo: string;
@@ -103,7 +124,6 @@ interface Semver {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(HERE, '..');
-const CACHE_PATH = resolve(PROJECT_ROOT, 'src/data/project-data.cache.json');
 const PUBLIC_DIRECTORY = resolve(PROJECT_ROOT, 'public');
 const ASSET_DIRECTORY = resolve(PUBLIC_DIRECTORY, PROJECT_ASSET_DIRECTORY);
 const LOCAL_REPOSITORY_ROOT = process.env.PROJECT_REPOSITORY_ROOT
@@ -159,6 +179,61 @@ function githubToken(): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function fetchHelp(): string {
+  return `Usage: npm run fetch-projects -- [options]
+
+Fetch and verify portfolio project data and covers. Routine runs update ignored
+runtime data. Refresh the committed fallback snapshot only when requested.
+Use npm run refresh-project-cache for the snapshot refresh workflow.
+
+Options:
+  -u, --update-cache  Also update src/data/project-data.cache.json
+  -h, --help          Show this help and exit
+
+Environment:
+  GITHUB_TOKEN, GH_TOKEN   Optional GitHub API credentials
+  PROJECT_REPOSITORY_ROOT  Optional root containing local project checkouts
+
+Exit statuses:
+  0  Project data fetched successfully or help shown
+  1  Fetch, validation, or file operation failed
+  2  Invalid command usage`;
+}
+
+export function parseFetchArguments(argumentsList: readonly string[]): FetchCommand {
+  let endOfOptions = false;
+  let help = false;
+  let updateCache = false;
+
+  for (const argument of argumentsList) {
+    if (!endOfOptions && argument === '--') {
+      endOfOptions = true;
+      continue;
+    }
+    if (!endOfOptions && argument === '--help') {
+      help = true;
+      continue;
+    }
+    if (!endOfOptions && argument === '--update-cache') {
+      updateCache = true;
+      continue;
+    }
+    if (!endOfOptions && argument.startsWith('-') && !argument.startsWith('--') && argument !== '-') {
+      for (const option of argument.slice(1)) {
+        if (option === 'h') help = true;
+        else if (option === 'u') updateCache = true;
+        else throw new FetchCliError(`unknown option: -${option}`, FETCH_EXIT_STATUS.USAGE_ERROR);
+      }
+      continue;
+    }
+    throw new FetchCliError(`unexpected argument: ${argument}`, FETCH_EXIT_STATUS.USAGE_ERROR);
+  }
+
+  return help
+    ? { mode: FETCH_MODE.HELP }
+    : { mode: FETCH_MODE.FETCH, updateCache };
 }
 
 export function resolveMeta(input: ResolveInput): ResolveOutput {
@@ -508,17 +583,6 @@ async function emitSummary(summary: string): Promise<void> {
   if (SUMMARY_PATH) await fs.appendFile(SUMMARY_PATH, `${summary}\n`);
 }
 
-async function readCache(): Promise<Record<string, CacheEntry>> {
-  try {
-    const parsed = JSON.parse(await fs.readFile(CACHE_PATH, 'utf8')) as unknown;
-    if (!isRecord(parsed)) throw new Error(`${CACHE_PATH} must contain a JSON object`);
-    return parsed as Record<string, CacheEntry>;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
-    throw error;
-  }
-}
-
 async function writeProjectAsset(
   stageDirectory: string,
   repository: string,
@@ -541,18 +605,8 @@ async function replaceGeneratedAssets(stageDirectory: string): Promise<void> {
   await fs.rename(stageDirectory, ASSET_DIRECTORY);
 }
 
-async function writeCache(cache: ProjectCache): Promise<void> {
-  const temporaryPath = `${CACHE_PATH}.${process.pid}.tmp`;
-  try {
-    await fs.writeFile(temporaryPath, `${JSON.stringify(cache, null, 2)}\n`, { flag: 'wx' });
-    await fs.rename(temporaryPath, CACHE_PATH);
-  } finally {
-    await fs.rm(temporaryPath, { force: true });
-  }
-}
-
-async function main(): Promise<void> {
-  const cache = await readCache();
+async function fetchProjects(updateCache: boolean): Promise<void> {
+  const { data: cache } = await loadProjectData(PROJECT_ROOT);
   const now = new Date();
   const errors: string[] = [];
   const rows: SummaryRow[] = [];
@@ -610,16 +664,32 @@ async function main(): Promise<void> {
     if (errors.length > 0) throw new Error(`project data checks failed\n${errors.join('\n')}`);
     await replaceGeneratedAssets(stageDirectory);
     stageMoved = true;
-    await writeCache(nextCache);
+    await writeProjectData(PROJECT_ROOT, nextCache, { updateSnapshot: updateCache });
     await emitSummary(renderSummary(rows));
   } finally {
     if (!stageMoved) await fs.rm(stageDirectory, { recursive: true, force: true });
   }
 }
 
+export async function main(argumentsList = process.argv.slice(2)): Promise<void> {
+  const command = parseFetchArguments(argumentsList);
+  if (command.mode === FETCH_MODE.HELP) {
+    console.log(fetchHelp());
+    return;
+  }
+  await fetchProjects(command.updateCache);
+  if (command.updateCache) console.log('Updated committed project data cache');
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main().catch((error) => {
-    console.error('fetch-projects failed:', error);
-    process.exit(1);
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(`fetch-projects: ${detail}`);
+    if (error instanceof FetchCliError && error.exitCode === FETCH_EXIT_STATUS.USAGE_ERROR) {
+      console.error('Try npm run fetch-projects -- --help');
+    }
+    process.exitCode = error instanceof FetchCliError
+      ? error.exitCode
+      : FETCH_EXIT_STATUS.RUNTIME_FAILURE;
   });
 }

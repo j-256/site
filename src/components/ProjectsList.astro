@@ -1,21 +1,11 @@
 ---
 import { projectListings } from '../data/projects';
-import cache from '../data/project-data.cache.json';
 import { formatLsRow, META_WIDTH } from '../lib/format';
 import { projectCoverAssetPath } from '../lib/project-assets';
+import { loadProjectData } from '../lib/project-data-store';
 import { projectPermissions } from '../lib/project-listing';
 
-interface ProjectData {
-  value: string;
-  name: string;
-  owner: string;
-  description: string | null;
-  url: string;
-  coverWidth: number;
-  coverHeight: number;
-}
-
-const projectData = cache as Record<string, ProjectData>;
+const { data: projectData } = await loadProjectData(process.cwd());
 const PREVIEW_DELAY_MS = 500;
 const rows = projectListings.map((listing) => {
   const data = projectData[listing.repository];

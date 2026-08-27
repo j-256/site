@@ -15,6 +15,7 @@
     "prebuild": "npm run write-cname && npm run write-og",
     "predev": "npm run write-cname && npm run write-og && npm run fetch-projects",
     "fetch-projects": "tsx --env-file-if-exists=.env scripts/fetch-projects.ts",
+    "refresh-project-cache": "tsx --env-file-if-exists=.env scripts/fetch-projects.ts --update-cache",
     "build": "npm run fetch-projects && astro build",
     "deploy": "wrangler deploy",
     "deploy:dry-run": "wrangler deploy --dry-run",
