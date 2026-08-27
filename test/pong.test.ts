@@ -20,6 +20,10 @@ function playingState(): PongState {
   };
 }
 
+function ballSpeed(state: PongState): number {
+  return Math.hypot(state.ball.vx, state.ball.vy);
+}
+
 describe('Pong state', () => {
   it('starts centered behind a serve delay', () => {
     const state = createPongState(COURT, -1);
@@ -106,6 +110,54 @@ describe('Pong physics', () => {
 
     expect(next.ball.vx).toBeGreaterThan(0);
     expect(next.ball.vy).toBeGreaterThan(0);
+  });
+
+  it('slightly accelerates the ball after every paddle return', () => {
+    const geometry = getCourtGeometry(COURT);
+    const leftReturn: PongState = {
+      ...playingState(),
+      ball: {
+        x: geometry.leftPaddleX + geometry.paddleWidth / 2 + geometry.ballRadius + 2,
+        y: COURT.height / 2,
+        vx: -geometry.baseBallSpeed,
+        vy: 0,
+      },
+    };
+    const afterLeftReturn = advancePong(leftReturn, COURT, 0.03, () => 0.5);
+    const firstReturnSpeed = ballSpeed(afterLeftReturn);
+    const rightReturn: PongState = {
+      ...afterLeftReturn,
+      ball: {
+        x: geometry.rightPaddleX - geometry.paddleWidth / 2 - geometry.ballRadius - 2,
+        y: COURT.height / 2,
+        vx: firstReturnSpeed,
+        vy: 0,
+      },
+    };
+    const afterRightReturn = advancePong(rightReturn, COURT, 0.03, () => 0.5);
+
+    expect(firstReturnSpeed).toBeGreaterThan(geometry.baseBallSpeed);
+    expect(ballSpeed(afterRightReturn)).toBeGreaterThan(firstReturnSpeed);
+    expect(ballSpeed(afterRightReturn)).toBeLessThan(geometry.baseBallSpeed * 1.2);
+  });
+
+  it('resets the accelerated ball to base speed after a goal', () => {
+    const geometry = getCourtGeometry(COURT);
+    const accelerated: PongState = {
+      ...playingState(),
+      ball: {
+        x: -geometry.ballRadius - 1,
+        y: geometry.paddleHeight,
+        vx: -geometry.maxBallSpeed,
+        vy: 0,
+      },
+    };
+    const scored = advancePong(accelerated, COURT, 0.01, () => 0.5);
+    const served = advancePong(scored, COURT, PONG_SERVE_DELAY_SECONDS + 0.01, () => 0.5);
+
+    expect(scored.score.right).toBe(1);
+    expect(scored.ball.vx).toBe(0);
+    expect(ballSpeed(served)).toBeCloseTo(geometry.baseBallSpeed);
   });
 
   it('subdivides delayed frames so the ball cannot tunnel through a paddle', () => {
