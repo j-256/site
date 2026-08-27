@@ -28,6 +28,7 @@ const CANVAS_STATE = Object.freeze({
   DISMISSED: 'dismissed',
   PAUSED: 'paused',
   REDUCED_MOTION: 'reduced-motion',
+  SLEEPING: 'sleeping',
 } as const);
 const BALL_PRESENCE = Object.freeze({
   DORMANT: 'dormant',
@@ -59,7 +60,10 @@ const ARROW_CODES: ReadonlySet<string> = new Set([CONTROL_CODE.RIGHT_UP, CONTROL
 const FALLBACK_GAME_COLOR = '#23AD19';
 const FALLBACK_BALL_COLOR = '#29FE13';
 const MAX_DEVICE_PIXEL_RATIO = 2;
-const MOUSE_ACTIVATION_DISTANCE = 24;
+const DISCOVERY_ACTIVATION_DURATION_MS = 1500;
+const DISCOVERY_ACTIVITY_MAX_GAP_MS = 250;
+const DISCOVERY_MIN_TRAVEL = 24;
+const INACTIVITY_HIDE_DELAY_MS = 8000;
 const BALL_DRAW_SCALE = 1.18;
 const BALL_OCCLUDER_SELECTOR = [
   '.page a',
@@ -131,10 +135,16 @@ export function initPongBackground(
   let active = false;
   let dismissed = false;
   let paused = false;
+  let sleeping = false;
   let animationFrame = 0;
   let lastFrameTime = 0;
   let previousMouse: Point | null = null;
-  let mouseTravel = 0;
+  let previousTouches = new Map<number, Point>();
+  let discoveryActivityStartedAt = 0;
+  let lastDiscoveryMovementAt = 0;
+  let discoveryTravel = 0;
+  let lastGameActivityAt = 0;
+  let inactivityTimer = 0;
   let gameColor = FALLBACK_GAME_COLOR;
   let ballColor = FALLBACK_BALL_COLOR;
   let ballImpact = 0;
@@ -147,11 +157,79 @@ export function initPongBackground(
   }
 
   function gameIsVisible(): boolean {
-    return active && !dismissed;
+    return active && !dismissed && !sleeping;
   }
 
   function gameIsLit(): boolean {
     return gameIsVisible() && ballVisibilityUnlocked;
+  }
+
+  function resetDiscoveryActivity(): void {
+    discoveryActivityStartedAt = 0;
+    lastDiscoveryMovementAt = 0;
+    discoveryTravel = 0;
+  }
+
+  function discoveryMovementIsSustained(distance: number, timestamp: number): boolean {
+    if (!Number.isFinite(distance) || distance <= 0) return false;
+    if (
+      lastDiscoveryMovementAt === 0 ||
+      timestamp - lastDiscoveryMovementAt > DISCOVERY_ACTIVITY_MAX_GAP_MS
+    ) {
+      discoveryActivityStartedAt = timestamp;
+      discoveryTravel = 0;
+    }
+    lastDiscoveryMovementAt = timestamp;
+    discoveryTravel += distance;
+    return (
+      discoveryTravel >= DISCOVERY_MIN_TRAVEL &&
+      timestamp - discoveryActivityStartedAt >= DISCOVERY_ACTIVATION_DURATION_MS
+    );
+  }
+
+  function stopInactivityTimer(): void {
+    if (inactivityTimer === 0) return;
+    window.clearTimeout(inactivityTimer);
+    inactivityTimer = 0;
+  }
+
+  function sleepGame(): void {
+    if (!gameIsVisible()) return;
+    sleeping = true;
+    ballImpact = 0;
+    pressedCodes.clear();
+    stopAnimation();
+    syncCanvasState();
+    draw();
+  }
+
+  function checkInactivity(): void {
+    inactivityTimer = 0;
+    if (!gameIsVisible() || motionIsReduced()) return;
+    const remaining = INACTIVITY_HIDE_DELAY_MS - (performance.now() - lastGameActivityAt);
+    if (remaining > 0) {
+      inactivityTimer = window.setTimeout(checkInactivity, remaining);
+      return;
+    }
+    sleepGame();
+  }
+
+  function noteGameActivity(): void {
+    if (!gameIsVisible() || motionIsReduced()) return;
+    lastGameActivityAt = performance.now();
+    if (inactivityTimer === 0) {
+      inactivityTimer = window.setTimeout(checkInactivity, INACTIVITY_HIDE_DELAY_MS);
+    }
+  }
+
+  function wakeSleepingGame(forcePaused: boolean): void {
+    if (!sleeping) return;
+    sleeping = false;
+    if (forcePaused) paused = true;
+    syncCanvasState();
+    draw();
+    noteGameActivity();
+    startAnimation();
   }
 
   function stopScoreTyping(): void {
@@ -185,6 +263,7 @@ export function initPongBackground(
   function syncCanvasState(): void {
     if (dismissed) canvas.dataset.pongState = CANVAS_STATE.DISMISSED;
     else if (motionIsReduced()) canvas.dataset.pongState = CANVAS_STATE.REDUCED_MOTION;
+    else if (sleeping) canvas.dataset.pongState = CANVAS_STATE.SLEEPING;
     else if (paused) canvas.dataset.pongState = CANVAS_STATE.PAUSED;
     else if (active) canvas.dataset.pongState = CANVAS_STATE.ACTIVE;
     else canvas.dataset.pongState = CANVAS_STATE.IDLE;
@@ -193,7 +272,7 @@ export function initPongBackground(
   }
 
   function syncScore(): void {
-    if (dismissed) {
+    if (dismissed || sleeping) {
       canvas.dataset.pongScore = EMPTY_SCORE;
       canvas.dataset.pongReveal = BALL_REVEAL_STATE.LOCKED;
     } else {
@@ -258,8 +337,9 @@ export function initPongBackground(
     const ballOccluded = gameVisible && !ballVisibilityUnlocked && ballIsOccluded(ballDrawRadius);
     const backgroundBallVisible = gameVisible && !ballVisibilityUnlocked && !ballOccluded;
     const foregroundPaddlesVisible = gameIsLit() && !motionIsReduced();
-    const leftPaddleY = dismissed ? geometry.height / 2 : state.paddles.leftY;
-    const rightPaddleY = dismissed ? geometry.height / 2 : state.paddles.rightY;
+    const dormantCourtVisible = dismissed || sleeping;
+    const leftPaddleY = dormantCourtVisible ? geometry.height / 2 : state.paddles.leftY;
+    const rightPaddleY = dormantCourtVisible ? geometry.height / 2 : state.paddles.rightY;
     context.clearRect(0, 0, geometry.width, geometry.height);
     context.save();
     context.fillStyle = gameColor;
@@ -352,7 +432,7 @@ export function initPongBackground(
 
   function runFrame(timestamp: number): void {
     animationFrame = 0;
-    if (!active || dismissed || paused || motionIsReduced() || document.hidden) return;
+    if (!active || dismissed || sleeping || paused || motionIsReduced() || document.hidden) return;
     const seconds = Math.min(
       Math.max(0, (timestamp - lastFrameTime) / 1000),
       MAX_FRAME_SECONDS
@@ -381,6 +461,7 @@ export function initPongBackground(
       animationFrame !== 0 ||
       !active ||
       dismissed ||
+      sleeping ||
       paused ||
       motionIsReduced() ||
       document.hidden
@@ -389,12 +470,15 @@ export function initPongBackground(
     animationFrame = window.requestAnimationFrame(runFrame);
   }
 
-  function discoverGame(): void {
+  function activateGame(startPaused: boolean): void {
     if (active || dismissed || motionIsReduced()) return;
     active = true;
-    paused = false;
+    paused = startPaused;
+    sleeping = false;
+    resetDiscoveryActivity();
     syncCanvasState();
     draw();
+    noteGameActivity();
     startAnimation();
   }
 
@@ -405,18 +489,25 @@ export function initPongBackground(
     ballImpact = 0;
     pressedCodes.clear();
     stopAnimation();
+    if (dismissed) stopInactivityTimer();
     syncCanvasState();
     draw();
+    if (!dismissed) noteGameActivity();
   }
 
   function togglePause(): void {
     if (!active) {
-      discoverGame();
+      activateGame(true);
+      return;
+    }
+    if (sleeping) {
+      wakeSleepingGame(true);
       return;
     }
     paused = !paused;
     pressedCodes.clear();
     syncCanvasState();
+    noteGameActivity();
     if (paused) {
       ballImpact = 0;
       stopAnimation();
@@ -436,24 +527,57 @@ export function initPongBackground(
   function onPointerMove(event: PointerEvent): void {
     if (dismissed || motionIsReduced() || event.pointerType === 'touch') return;
     const point = { x: event.clientX, y: event.clientY };
-    if (previousMouse) mouseTravel += Math.hypot(point.x - previousMouse.x, point.y - previousMouse.y);
+    const distance = previousMouse
+      ? Math.hypot(point.x - previousMouse.x, point.y - previousMouse.y)
+      : 0;
     previousMouse = point;
-    if (!active && mouseTravel < MOUSE_ACTIVATION_DISTANCE) return;
+    if (sleeping) wakeSleepingGame(false);
     movePaddleAt(point);
-    discoverGame();
+    if (active) {
+      noteGameActivity();
+      return;
+    }
+    if (discoveryMovementIsSustained(distance, performance.now())) activateGame(false);
   }
 
   function onTouch(event: TouchEvent): void {
     if (dismissed || motionIsReduced()) return;
+    const nextTouches = new Map<number, Point>();
+    let distance = 0;
     for (const touch of Array.from(event.touches)) {
-      movePaddleAt({ x: touch.clientX, y: touch.clientY });
+      const point = { x: touch.clientX, y: touch.clientY };
+      const previous = previousTouches.get(touch.identifier);
+      if (previous) distance += Math.hypot(point.x - previous.x, point.y - previous.y);
+      nextTouches.set(touch.identifier, point);
+      movePaddleAt(point);
     }
-    discoverGame();
+    previousTouches = nextTouches;
+    if (sleeping) wakeSleepingGame(false);
+    if (active) {
+      noteGameActivity();
+      return;
+    }
+    if (discoveryMovementIsSustained(distance, performance.now())) activateGame(false);
+  }
+
+  function onTouchEnd(event: TouchEvent): void {
+    previousTouches = new Map(
+      Array.from(event.touches, touch => [
+        touch.identifier,
+        { x: touch.clientX, y: touch.clientY },
+      ])
+    );
+    if (!active && previousTouches.size === 0) resetDiscoveryActivity();
+    else if (gameIsVisible()) noteGameActivity();
   }
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.code === CONTROL_CODE.DISMISS) {
-      if (!event.repeat) toggleDismissal();
+      if (!event.repeat && !motionIsReduced()) {
+        if (!active) activateGame(true);
+        else if (sleeping) wakeSleepingGame(true);
+        else toggleDismissal();
+      }
       return;
     }
     if (dismissed || motionIsReduced()) return;
@@ -462,16 +586,17 @@ export function initPongBackground(
       if (!event.repeat) togglePause();
       return;
     }
-    if (!GAMEPLAY_CODES.has(event.code)) return;
+    if (!active || sleeping || !GAMEPLAY_CODES.has(event.code)) return;
     pressedCodes.add(event.code);
-    discoverGame();
+    noteGameActivity();
     if (ARROW_CODES.has(event.code)) event.preventDefault();
   }
 
   function onKeyUp(event: KeyboardEvent): void {
-    if (dismissed || motionIsReduced()) return;
+    if (dismissed || sleeping || motionIsReduced()) return;
     if (!GAMEPLAY_CODES.has(event.code)) return;
     pressedCodes.delete(event.code);
+    noteGameActivity();
     if (ARROW_CODES.has(event.code) && isKeyboardGameContext()) event.preventDefault();
   }
 
@@ -484,13 +609,16 @@ export function initPongBackground(
     stopAnimation();
     ballImpact = 0;
     pressedCodes.clear();
+    if (motionIsReduced()) stopInactivityTimer();
     syncCanvasState();
     draw();
+    if (!motionIsReduced()) noteGameActivity();
     startAnimation();
   }
 
   function teardown(): void {
     stopAnimation();
+    stopInactivityTimer();
     stopScoreTyping();
     scoreTerminal.textContent = '';
     ballEmphasis.style.opacity = '0';
@@ -509,6 +637,8 @@ export function initPongBackground(
   document.addEventListener('pointermove', onPointerMove, passiveListenerOptions);
   document.addEventListener('touchstart', onTouch, passiveListenerOptions);
   document.addEventListener('touchmove', onTouch, passiveListenerOptions);
+  document.addEventListener('touchend', onTouchEnd, passiveListenerOptions);
+  document.addEventListener('touchcancel', onTouchEnd, passiveListenerOptions);
   document.addEventListener('keydown', onKeyDown, listenerOptions);
   document.addEventListener('keyup', onKeyUp, listenerOptions);
   document.addEventListener('visibilitychange', onVisibilityChange, listenerOptions);

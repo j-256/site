@@ -8,6 +8,10 @@ const ACTIVE_STYLE_SETTLE_MS = 280;
 const KEY_HOLD_MS = 140;
 const SERVE_SETTLE_MS = 850;
 const MOTION_SAMPLE_MS = 180;
+const DISCOVERY_ACTIVATION_MS = 1500;
+const DISCOVERY_CONTINUITY_GAP_MS = 300;
+const DISCOVERY_TEST_BUFFER_MS = 180;
+const INACTIVITY_HIDE_MS = 8000;
 const IMPACT_WAIT_MS = 3500;
 const FOREGROUND_WAIT_MS = 2000;
 const BRIGHTNESS_SAMPLE_MS = 700;
@@ -122,6 +126,16 @@ async function ballPositionChanges(page, waitMs = MOTION_SAMPLE_MS) {
   }, waitMs);
 }
 
+async function sustainMouseMovement(page, duration) {
+  const startedAt = Date.now();
+  let step = 0;
+  while (Date.now() - startedAt < duration) {
+    await page.mouse.move(80 + (step % 2) * 48, 220 + (step % 3) * 24);
+    await page.waitForTimeout(50);
+    step += 1;
+  }
+}
+
 async function createPage(options) {
   const errors = [];
   const context = await browser.newContext(options);
@@ -164,12 +178,55 @@ report(
 report('idle court stays still before discovery', !(await canvasChanges(desktop.page)));
 
 await desktop.page.mouse.move(80, 220);
-await desktop.page.mouse.move(80, 320);
+await desktop.page.mouse.move(128, 268);
+await desktop.page.waitForTimeout(DISCOVERY_CONTINUITY_GAP_MS);
+await desktop.page.mouse.move(80, 220);
+await desktop.page.mouse.move(128, 268);
+await desktop.page.waitForTimeout(DISCOVERY_TEST_BUFFER_MS);
+canvas = await desktop.page.evaluate(readCanvas);
+report(
+  'brief or interrupted mouse movement leaves Pong dormant',
+  canvas.state === 'idle' &&
+    canvas.ballPresence === 'dormant' &&
+    canvas.paddleTone === 'dim' &&
+    canvas.scoreText === ''
+);
+
+await desktop.page.keyboard.press('p');
+await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+canvas = await desktop.page.evaluate(readCanvas);
+report(
+  'P skips discovery and reveals Pong paused',
+  canvas.state === 'paused' &&
+    canvas.ballPresence === 'spawned' &&
+    canvas.paddleTone === 'dim' &&
+    canvas.scoreText === '' &&
+    !(await canvasChanges(desktop.page))
+);
+
+await desktop.page.reload({ waitUntil: 'domcontentloaded' });
+await desktop.page.keyboard.press('Escape');
+await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+canvas = await desktop.page.evaluate(readCanvas);
+report(
+  'Escape skips discovery and reveals Pong paused',
+  canvas.state === 'paused' &&
+    canvas.ballPresence === 'spawned' &&
+    canvas.paddleTone === 'dim' &&
+    canvas.scoreText === '' &&
+    !(await canvasChanges(desktop.page))
+);
+
+await desktop.page.reload({ waitUntil: 'domcontentloaded' });
+await sustainMouseMovement(
+  desktop.page,
+  DISCOVERY_ACTIVATION_MS + DISCOVERY_TEST_BUFFER_MS
+);
 await desktop.page.waitForFunction(() => document.querySelector('[data-pong-background]').dataset.pongState === 'active');
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
 report(
-  'mouse travel starts the game without lighting it up',
+  'sustained mouse movement starts the game without lighting it up',
   canvas.state === 'active' &&
     canvas.ballPresence === 'spawned' &&
     canvas.paddleTone === 'dim' &&
@@ -378,6 +435,62 @@ report(
   `score=${scoreAfterPoint.score} text=${scoreAfterPoint.scoreText} cleared=${scoreAfterPoint.sawClear}`
 );
 
+await desktop.page.keyboard.press('p');
+canvas = await desktop.page.evaluate(readCanvas);
+const scoreBeforeSleep = canvas.score;
+report('P leaves the lit game paused for the inactivity check', canvas.state === 'paused');
+await desktop.page.waitForFunction(
+  () => document.querySelector('[data-pong-background]').dataset.pongState === 'sleeping',
+  null,
+  { timeout: INACTIVITY_HIDE_MS + 2000 }
+);
+await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+canvas = await desktop.page.evaluate(readCanvas);
+report(
+  'inactivity returns Pong to the dormant court',
+  canvas.state === 'sleeping' &&
+    canvas.ballPresence === 'dormant' &&
+    canvas.paddleTone === 'dim' &&
+    canvas.reveal === 'locked' &&
+    canvas.score === '0:0' &&
+    canvas.ballOpacity === '0' &&
+    canvas.leftPaddleOpacity === '0' &&
+    canvas.rightPaddleOpacity === '0' &&
+    canvas.scoreText === '' &&
+    canvas.opacity === '0.035' &&
+    !(await canvasChanges(desktop.page)),
+  `state=${canvas.state} ball=${canvas.ballPresence} paddles=${canvas.paddleTone} score=${canvas.scoreText}`
+);
+
+await desktop.page.mouse.move(81, 111);
+await desktop.page.waitForFunction(() => document.querySelector('[data-pong-background]').dataset.pongState === 'paused');
+await desktop.page.waitForFunction(
+  score => document.querySelector('[data-pong-score-terminal]').textContent === `pong ${score}`,
+  scoreBeforeSleep
+);
+await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+canvas = await desktop.page.evaluate(readCanvas);
+report(
+  'the next mouse movement restores the preserved game immediately',
+  canvas.state === 'paused' &&
+    canvas.ballPresence === 'spawned' &&
+    canvas.paddleTone === 'bright' &&
+    canvas.reveal === 'unlocked' &&
+    canvas.score === scoreBeforeSleep &&
+    canvas.scoreText === `pong ${scoreBeforeSleep}` &&
+    canvas.opacity === '0.12' &&
+    !(await ballPositionChanges(desktop.page)),
+  `state=${canvas.state} score=${canvas.score}/${canvas.scoreText}`
+);
+
+await desktop.page.keyboard.press('p');
+canvas = await desktop.page.evaluate(readCanvas);
+await desktop.page.waitForTimeout(SERVE_SETTLE_MS);
+report(
+  'P resumes the game after its inactivity wake',
+  canvas.state === 'active' && (await ballPositionChanges(desktop.page))
+);
+
 await desktop.page.mouse.move(80, 110);
 await desktop.page.waitForTimeout(INPUT_SETTLE_MS);
 paddles = await desktop.page.evaluate(readPaddles);
@@ -546,8 +659,10 @@ report(
 
 await desktop.page.reload({ waitUntil: 'domcontentloaded' });
 canvas = await desktop.page.evaluate(readCanvas);
-await desktop.page.mouse.move(80, 220);
-await desktop.page.mouse.move(80, 320);
+await sustainMouseMovement(
+  desktop.page,
+  DISCOVERY_ACTIVATION_MS + DISCOVERY_TEST_BUFFER_MS
+);
 await desktop.page.waitForFunction(() => document.querySelector('[data-pong-background]').dataset.pongState === 'active');
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 const rediscoveredCanvas = await desktop.page.evaluate(readCanvas);
@@ -631,8 +746,8 @@ report(
   canvas.mode === 'force' && canvas.state === 'idle' && canvas.bootTyping === true,
   `mode=${canvas.mode} state=${canvas.state} typing=${canvas.bootTyping}`
 );
-await reduced.page.mouse.move(80, 220);
-await reduced.page.mouse.move(80, 320);
+await reduced.page.keyboard.press('p');
+await reduced.page.keyboard.press('p');
 await reduced.page.waitForTimeout(SERVE_SETTLE_MS);
 canvas = await reduced.page.evaluate(readCanvas);
 report(
@@ -676,17 +791,29 @@ await cdp.send('Input.dispatchTouchEvent', {
   ],
 });
 await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
-paddles = await mobile.page.evaluate(readPaddles);
 canvas = await mobile.page.evaluate(readCanvas);
 report(
-  'two touches independently position both paddles',
-  canvas.state === 'active' &&
+  'a brief two-finger touch leaves Pong dormant',
+  canvas.state === 'idle' &&
     canvas.paddleTone === 'dim' &&
-    canvas.scoreText === '' &&
-    Math.abs(paddles.left.center - 150) <= PADDLE_POSITION_TOLERANCE &&
-    Math.abs(paddles.right.center - 550) <= PADDLE_POSITION_TOLERANCE,
-  `state=${canvas.state} leftY=${paddles.left.center} rightY=${paddles.right.center}`
+    canvas.scoreText === '',
+  `state=${canvas.state}`
 );
+
+const touchStartedAt = Date.now();
+let touchStep = 0;
+while (Date.now() - touchStartedAt < DISCOVERY_ACTIVATION_MS + DISCOVERY_TEST_BUFFER_MS) {
+  const offset = touchStep % 2 === 0 ? 0 : 24;
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [
+      { x: 40, y: 150 + offset, id: 1 },
+      { x: 350, y: 550 - offset, id: 2 },
+    ],
+  });
+  await mobile.page.waitForTimeout(50);
+  touchStep += 1;
+}
 
 await cdp.send('Input.dispatchTouchEvent', {
   type: 'touchMove',
@@ -697,10 +824,45 @@ await cdp.send('Input.dispatchTouchEvent', {
 });
 await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
 paddles = await mobile.page.evaluate(readPaddles);
+canvas = await mobile.page.evaluate(readCanvas);
 report(
-  'two-finger movement updates both paddles',
+  'sustained touch movement starts Pong',
+  canvas.state === 'active' &&
+    canvas.paddleTone === 'dim' &&
+    canvas.scoreText === '',
+  `state=${canvas.state}`
+);
+
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+await cdp.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [
+    { x: 40, y: 250, id: 1 },
+    { x: 350, y: 450, id: 2 },
+  ],
+});
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
+paddles = await mobile.page.evaluate(readPaddles);
+report(
+  'two touches independently position both paddles after discovery',
   Math.abs(paddles.left.center - 250) <= PADDLE_POSITION_TOLERANCE &&
     Math.abs(paddles.right.center - 450) <= PADDLE_POSITION_TOLERANCE,
+  `leftY=${paddles.left.center} rightY=${paddles.right.center}`
+);
+
+await cdp.send('Input.dispatchTouchEvent', {
+  type: 'touchMove',
+  touchPoints: [
+    { x: 40, y: 300, id: 1 },
+    { x: 350, y: 400, id: 2 },
+  ],
+});
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
+paddles = await mobile.page.evaluate(readPaddles);
+report(
+  'two-finger movement keeps updating both paddles',
+  Math.abs(paddles.left.center - 300) <= PADDLE_POSITION_TOLERANCE &&
+    Math.abs(paddles.right.center - 400) <= PADDLE_POSITION_TOLERANCE,
   `leftY=${paddles.left.center} rightY=${paddles.right.center}`
 );
 await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
