@@ -1,3 +1,5 @@
+import { animationIsForced, motionShouldReduce } from '../lib/animation-preference';
+
 const STORAGE_KEY = 'bootSeen';
 const TYPE_RATE_MS = 8;
 const BANNER_TYPE_RATE_MS = 0.8;
@@ -6,10 +8,8 @@ const BANNER_TYPE_RATE_MS = 0.8;
 const BANNER_TICKS = 190;
 
 function shouldSkipAnimation(): boolean {
-  // ?animate overrides both reduced-motion and the per-session check
-  // Intended for development; real users won't add the flag
-  if (new URLSearchParams(location.search).has('animate')) return false;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
+  if (animationIsForced()) return false;
+  if (motionShouldReduce()) return true;
   try {
     return sessionStorage.getItem(STORAGE_KEY) !== null;
   } catch {
@@ -23,7 +23,13 @@ interface TextNodeSnapshot {
 }
 
 function snapshotTextNodes(root: HTMLElement): TextNodeSnapshot[] {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      return node.parentElement?.closest('[data-boot-dynamic]')
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT;
+    },
+  });
   const snapshots: TextNodeSnapshot[] = [];
   let current = walker.nextNode();
   while (current) {

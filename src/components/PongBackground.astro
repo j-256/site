@@ -1,0 +1,48 @@
+<canvas
+  class="pong-background"
+  data-pong-background
+  data-pong-ball="dormant"
+  data-pong-paddles="dim"
+  data-pong-reveal="locked"
+  data-pong-state="idle"
+  data-pong-score="0:0"
+  aria-hidden="true"
+></canvas>
+<span
+  class="pong-ball-emphasis"
+  data-pong-ball-emphasis
+  data-pong-emphasis="hidden"
+  aria-hidden="true"
+></span>
+<span
+  class="pong-paddle-emphasis"
+  data-pong-paddle-emphasis="left"
+  aria-hidden="true"
+></span>
+<span
+  class="pong-paddle-emphasis"
+  data-pong-paddle-emphasis="right"
+  aria-hidden="true"
+></span>
+
+<script>
+  import { initPongBackground } from '../scripts/pong';
+
+  const canvas = document.querySelector('[data-pong-background]');
+  const ballEmphasis = document.querySelector('[data-pong-ball-emphasis]');
+  const leftPaddleEmphasis = document.querySelector('[data-pong-paddle-emphasis="left"]');
+  const rightPaddleEmphasis = document.querySelector('[data-pong-paddle-emphasis="right"]');
+  const scoreTerminal = document.querySelector('[data-pong-score-terminal]');
+  if (
+    canvas instanceof HTMLCanvasElement &&
+    ballEmphasis instanceof HTMLElement &&
+    leftPaddleEmphasis instanceof HTMLElement &&
+    rightPaddleEmphasis instanceof HTMLElement &&
+    scoreTerminal instanceof HTMLElement
+  ) {
+    initPongBackground(canvas, ballEmphasis, {
+      left: leftPaddleEmphasis,
+      right: rightPaddleEmphasis,
+    }, scoreTerminal);
+  }
+</script>

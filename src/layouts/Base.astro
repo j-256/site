@@ -1,5 +1,7 @@
 ---
 import '../styles/global.css';
+import AnimationPreference from '../components/AnimationPreference.astro';
+import PongBackground from '../components/PongBackground.astro';
 import { siteHost, siteUrl } from '../lib/site-host';
 import { links } from '../data/links';
 import { WORDMARK, TAGLINE } from '../data/site';
@@ -22,6 +24,7 @@ const buildDate = new Date().toISOString();
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <AnimationPreference />
   <title>{TITLE}</title>
   <meta name="description" content={DESCRIPTION} />
   <link rel="canonical" href={SITE_URL} />
@@ -56,6 +59,7 @@ const buildDate = new Date().toISOString();
 <body>
   <a href="#content" class="skip-link">Skip to content</a>
   <div class="page">
+    <PongBackground />
     <slot name="banner" />
     <main id="content" tabindex="-1">
       <slot />

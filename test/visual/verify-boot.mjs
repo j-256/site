@@ -281,6 +281,8 @@ await probe({ label: 'first load in a NEW session, 414px', width: 414, expect: t
 await probe({ label: 'first load in a session, 900px', width: 900, expect: true });
 await probe({ label: 'prefers-reduced-motion', width: 414, reduced: true, expect: false });
 await probe({ label: '?animate overrides reduced-motion', width: 414, reduced: true, query: '?animate', expect: true });
+await probe({ label: '?animate=false disables motion', width: 414, query: '?animate=false', expect: false });
+await probe({ label: '?animate=false stays off with reduced-motion', width: 414, reduced: true, query: '?animate=false', expect: false });
 await probe({ label: '?animate overrides same-session', width: 414, sameSession: true, query: '?animate', expect: true });
 
 // Crossing the breakpoint must RESUME the animation, not end it. probeMorph only

@@ -1,6 +1,10 @@
 ---
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import {
+  ANIMATION_MODE,
+  ANIMATION_MODE_ATTRIBUTE,
+} from '../lib/animation-preference';
 
 const bannerWide = readFileSync(resolve(process.cwd(), 'src/data/banner.txt'), 'utf-8');
 const bannerNarrow = readFileSync(resolve(process.cwd(), 'src/data/banner-narrow.txt'), 'utf-8');
@@ -8,10 +12,17 @@ const bannerNarrow = readFileSync(resolve(process.cwd(), 'src/data/banner-narrow
 <aside class="boot" aria-label="Boot transcript" data-boot>
   <pre class="banner banner-wide" aria-hidden="true" data-boot-line data-boot-alt="banner">{bannerWide}</pre>
   <pre class="banner banner-narrow" aria-hidden="true" data-boot-line data-boot-alt="banner">{bannerNarrow}</pre>
-  <p class="prompt-line" data-boot-line><span class="prompt">$</span> <span class="cursor" aria-hidden="true"></span></p>
+  <p class="prompt-line" data-boot-line><span class="prompt">$</span> <span data-boot-dynamic data-pong-score-terminal></span><span class="cursor" aria-hidden="true"></span></p>
 </aside>
 
-<script is:inline>
+<script
+  is:inline
+  define:vars={{
+    animationModeAttribute: ANIMATION_MODE_ATTRIBUTE,
+    animationModeDisable: ANIMATION_MODE.DISABLE,
+    animationModeForce: ANIMATION_MODE.FORCE,
+  }}
+>
   // Synchronously decide whether the banner types in or just shows up. The full
   // boot.ts module loads asynchronously and inherits whichever state we set here.
   // The boot block is always visible -- the only question is whether the typing
@@ -19,11 +30,12 @@ const bannerNarrow = readFileSync(resolve(process.cwd(), 'src/data/banner-narrow
   (function () {
     var boot = document.querySelector('[data-boot]');
     if (!boot) return;
-    var params = new URLSearchParams(location.search);
-    var force = params.has('animate');
+    var mode = document.documentElement.getAttribute(animationModeAttribute);
+    var force = mode === animationModeForce;
+    var disabled = mode === animationModeDisable;
     var seen = null;
     try { seen = sessionStorage.getItem('bootSeen'); } catch (e) {}
-    var reduced = !force && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var reduced = disabled || (!force && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (!force && (seen !== null || reduced)) {
       // Later loads in the same session, and reduced-motion users, see the boot
       // block as static text. No typing animation runs

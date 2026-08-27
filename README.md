@@ -46,6 +46,12 @@ npm run deploy:dry-run     # validate the current dist artifact with Wrangler
 
 Install the matching browser with `npx playwright install chromium` before using the cover command. It renders the candidate production build locally at 1440x1000 with dark colors and reduced motion, then replaces `docs/screenshots/cover.png`; it does not capture or deploy the live site.
 
+## Pong
+
+The low-contrast background court rests behind the page without a ball. Deliberate mouse movement, touch, or a game key spawns the ball and starts play with both paddles on the ball's subdued background layer. The ball disappears completely behind foreground text until a player returns it with a paddle. That first return lights up the game: it permanently unlocks a bright foreground pass and impact pulse, brightens both paddles to match, and types the score into the boot prompt. The ball no longer changes transparency as it crosses page content, and the bright state persists across later points. The prompt clears and retypes the score after each goal. Mouse movement controls the paddle on its half of the viewport, two simultaneous touches can control both paddles, `W` and `S` control the left paddle, and Arrow Up and Arrow Down control the right paddle. `P` freezes or resumes the ball and paddles. Escape hides and pauses the game; a second Escape restores the paused position, and `P` resumes it. Other game input is ignored while it is hidden. Foreground links, text selection, and scrolling remain the primary interface.
+
+A present `animate` query parameter forces both the boot transcript and Pong to animate despite a reduced-motion preference, including bare `?animate`, `?animate=1`, and `?animate=true`. `?animate=0` or `?animate=false` forces both animations off. Only an absent parameter defers to the system preference. With motion reduced, the dormant court stays static while Pong input and its terminal score remain inactive. The override is entirely client-side and the deployment remains static.
+
 ## Deployment
 
 GitHub Actions owns the production pipeline. Every push to `main`, weekly refresh, and manual workflow run installs the locked dependencies, runs the tests, builds once, and deploys that exact `dist` directory to the `site` Cloudflare Worker through Wrangler. Pull requests perform the same verification without deploying. The deploy step receives `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from repository Actions secrets; `wrangler.jsonc` contains only non-secret deployment configuration.

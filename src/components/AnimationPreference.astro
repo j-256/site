@@ -1,0 +1,37 @@
+---
+import {
+  ANIMATION_DISABLE_VALUES,
+  ANIMATION_MODE,
+  ANIMATION_MODE_ATTRIBUTE,
+  ANIMATION_QUERY_PARAMETER,
+} from '../lib/animation-preference';
+---
+<script
+  is:inline
+  define:vars={{
+    animationDisableValues: ANIMATION_DISABLE_VALUES,
+    animationModeDisable: ANIMATION_MODE.DISABLE,
+    animationModeAttribute: ANIMATION_MODE_ATTRIBUTE,
+    animationModeForce: ANIMATION_MODE.FORCE,
+    animationModeSystem: ANIMATION_MODE.SYSTEM,
+    animationQueryParameter: ANIMATION_QUERY_PARAMETER,
+  }}
+>
+  (function () {
+    var params = new URLSearchParams(location.search);
+    var queryPresent = params.has(animationQueryParameter);
+    var queryValue = params.get(animationQueryParameter);
+
+    function resolveMode(value) {
+      if (value === null) return animationModeSystem;
+      var normalized = value.trim().toLowerCase();
+      if (animationDisableValues.indexOf(normalized) !== -1) return animationModeDisable;
+      return animationModeForce;
+    }
+
+    document.documentElement.setAttribute(
+      animationModeAttribute,
+      queryPresent ? resolveMode(queryValue) : animationModeSystem
+    );
+  })();
+</script>
