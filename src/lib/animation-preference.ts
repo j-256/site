@@ -13,6 +13,12 @@ export function animationIsForced(root: HTMLElement = document.documentElement):
   return root.getAttribute(ANIMATION_MODE_ATTRIBUTE) === ANIMATION_MODE.FORCE;
 }
 
+export function forceAnimation(root: HTMLElement = document.documentElement): boolean {
+  if (root.getAttribute(ANIMATION_MODE_ATTRIBUTE) === ANIMATION_MODE.DISABLE) return false;
+  root.setAttribute(ANIMATION_MODE_ATTRIBUTE, ANIMATION_MODE.FORCE);
+  return true;
+}
+
 export function motionShouldReduce(
   mediaQuery: MediaQueryList = window.matchMedia(ANIMATION_MEDIA_QUERY),
   root: HTMLElement = document.documentElement

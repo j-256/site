@@ -11,6 +11,7 @@ import {
 } from '../src/lib/pong';
 
 const COURT = Object.freeze({ width: 1000, height: 600 });
+const EXPECTED_PADDLE_HIT_SPEED_MULTIPLIER = 1.08;
 
 function playingState(): PongState {
   const state = createPongState(COURT);
@@ -112,7 +113,7 @@ describe('Pong physics', () => {
     expect(next.ball.vy).toBeGreaterThan(0);
   });
 
-  it('slightly accelerates the ball after every paddle return', () => {
+  it('accelerates the ball by eight percent after every paddle return', () => {
     const geometry = getCourtGeometry(COURT);
     const leftReturn: PongState = {
       ...playingState(),
@@ -136,8 +137,12 @@ describe('Pong physics', () => {
     };
     const afterRightReturn = advancePong(rightReturn, COURT, 0.03, () => 0.5);
 
-    expect(firstReturnSpeed).toBeGreaterThan(geometry.baseBallSpeed);
-    expect(ballSpeed(afterRightReturn)).toBeGreaterThan(firstReturnSpeed);
+    expect(firstReturnSpeed).toBeCloseTo(
+      geometry.baseBallSpeed * EXPECTED_PADDLE_HIT_SPEED_MULTIPLIER
+    );
+    expect(ballSpeed(afterRightReturn)).toBeCloseTo(
+      firstReturnSpeed * EXPECTED_PADDLE_HIT_SPEED_MULTIPLIER
+    );
     expect(ballSpeed(afterRightReturn)).toBeLessThan(geometry.baseBallSpeed * 1.2);
   });
 

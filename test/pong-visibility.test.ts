@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   BALL_EMPHASIS_REASON,
-  PONG_FOREGROUND_OPACITY,
+  PONG_BRIGHTNESS_MAX_STAGE,
+  advancePongBrightnessStage,
   ballHadImpact,
   ballHadPaddleImpact,
   decayBallImpact,
   getBallEmphasis,
+  getPongBrightnessOpacity,
 } from '../src/lib/pong-visibility';
 
 describe('Pong ball visibility', () => {
@@ -39,20 +41,39 @@ describe('Pong ball visibility', () => {
     expect(decayBallImpact(Number.NaN, 0.1)).toBe(0);
   });
 
-  it('keeps the overlay bright after it is unlocked', () => {
-    const hidden = getBallEmphasis(false, 0);
-    const unlocked = getBallEmphasis(true, 0);
-    const impact = getBallEmphasis(true, 1);
+  it('advances through four permanent brightness stages and then saturates', () => {
+    let stage = 0;
+    const opacities = [getPongBrightnessOpacity(stage)];
+    for (let hit = 0; hit < PONG_BRIGHTNESS_MAX_STAGE + 1; hit++) {
+      stage = advancePongBrightnessStage(stage);
+      opacities.push(getPongBrightnessOpacity(stage));
+    }
+
+    expect(opacities).toEqual([0, 0.2, 0.4, 0.6, 0.8, 0.8]);
+    expect(stage).toBe(PONG_BRIGHTNESS_MAX_STAGE);
+    expect(getPongBrightnessOpacity(-1)).toBe(0);
+    expect(getPongBrightnessOpacity(Number.NaN)).toBe(0);
+  });
+
+  it('keeps each stage visible beneath the temporary impact emphasis', () => {
+    const hidden = getBallEmphasis(0, 1);
+    const firstStage = getBallEmphasis(1, 0);
+    const firstImpact = getBallEmphasis(1, 1);
+    const finalStage = getBallEmphasis(PONG_BRIGHTNESS_MAX_STAGE, 0);
+    const finalImpact = getBallEmphasis(PONG_BRIGHTNESS_MAX_STAGE, 1);
 
     expect(hidden).toEqual({
       opacity: 0,
       reason: BALL_EMPHASIS_REASON.HIDDEN,
       scale: 1,
     });
-    expect(unlocked.reason).toBe(BALL_EMPHASIS_REASON.UNLOCKED);
-    expect(unlocked.opacity).toBe(PONG_FOREGROUND_OPACITY);
-    expect(impact.reason).toBe(BALL_EMPHASIS_REASON.IMPACT);
-    expect(impact.opacity).toBeGreaterThan(unlocked.opacity);
-    expect(impact.scale).toBeGreaterThan(unlocked.scale);
+    expect(firstStage.reason).toBe(BALL_EMPHASIS_REASON.UNLOCKED);
+    expect(firstStage.opacity).toBe(0.2);
+    expect(firstImpact.reason).toBe(BALL_EMPHASIS_REASON.IMPACT);
+    expect(firstImpact.opacity).toBeCloseTo(0.32);
+    expect(firstImpact.scale).toBeGreaterThan(firstStage.scale);
+    expect(finalStage.opacity).toBe(0.8);
+    expect(finalImpact.opacity).toBeCloseTo(0.92);
+    expect(finalImpact.opacity).toBeGreaterThan(finalStage.opacity);
   });
 });

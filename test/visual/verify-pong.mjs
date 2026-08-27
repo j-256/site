@@ -8,14 +8,17 @@ const ACTIVE_STYLE_SETTLE_MS = 280;
 const KEY_HOLD_MS = 140;
 const SERVE_SETTLE_MS = 850;
 const MOTION_SAMPLE_MS = 180;
-const DISCOVERY_ACTIVATION_MS = 1500;
+const DISCOVERY_ACTIVATION_MS = 1200;
 const DISCOVERY_CONTINUITY_GAP_MS = 300;
 const DISCOVERY_TEST_BUFFER_MS = 180;
 const INACTIVITY_HIDE_MS = 8000;
 const IMPACT_WAIT_MS = 3500;
 const FOREGROUND_WAIT_MS = 2000;
 const BRIGHTNESS_SAMPLE_MS = 700;
+const BRIGHTNESS_PROGRESSION_WAIT_MS = 14_000;
 const SCORE_WAIT_MS = 5000;
+const GOAL_EDGE_PROBE_PX = 80;
+const GOAL_RESET_CENTER_TOLERANCE_PX = 2;
 const PADDLE_POSITION_TOLERANCE = 4;
 const MIN_KEYBOARD_TRAVEL = 30;
 const PINCH_LEFT_START_X = 160;
@@ -55,6 +58,7 @@ function readCanvas() {
   return {
     state: canvas.dataset.pongState,
     ballPresence: canvas.dataset.pongBall,
+    brightness: canvas.dataset.pongBrightness,
     paddleTone: canvas.dataset.pongPaddles,
     reveal: canvas.dataset.pongReveal,
     score: canvas.dataset.pongScore,
@@ -180,6 +184,7 @@ report(
     canvas.rectHeight === DESKTOP_VIEWPORT.height &&
     canvas.pointerEvents === 'none' &&
     canvas.ballPresence === 'dormant' &&
+    canvas.brightness === '0' &&
     canvas.paddleTone === 'dim' &&
     canvas.reveal === 'locked' &&
     canvas.ballEmphasis === 'hidden' &&
@@ -223,15 +228,15 @@ report(
 
 await desktop.page.reload({ waitUntil: 'domcontentloaded' });
 await desktop.page.keyboard.press('Escape');
-await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+await desktop.page.waitForTimeout(SERVE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
 report(
-  'Escape skips discovery and reveals Pong paused',
-  canvas.state === 'paused' &&
+  'Escape skips discovery and starts Pong',
+  canvas.state === 'active' &&
     canvas.ballPresence === 'spawned' &&
     canvas.paddleTone === 'dim' &&
     canvas.scoreText === '' &&
-    !(await canvasChanges(desktop.page))
+    (await ballPositionChanges(desktop.page))
 );
 
 await desktop.page.reload({ waitUntil: 'domcontentloaded' });
@@ -246,6 +251,7 @@ report(
   'sustained mouse movement starts the game without lighting it up',
   canvas.state === 'active' &&
     canvas.ballPresence === 'spawned' &&
+    canvas.brightness === '0' &&
     canvas.paddleTone === 'dim' &&
     canvas.opacity === '0.12' &&
     canvas.scoreText === ''
@@ -272,6 +278,58 @@ report(
 );
 await desktop.page.waitForTimeout(SERVE_SETTLE_MS);
 report('discovered game advances the ball', await ballPositionChanges(desktop.page));
+
+const lockedScoreAfterMiss = await desktop.page.evaluate(async ({ timeout, edge, centerTolerance }) => {
+  const ball = document.querySelector('[data-pong-ball-emphasis]');
+  const canvas = document.querySelector('[data-pong-background]');
+  const scoreTerminal = document.querySelector('[data-pong-score-terminal]');
+  const deadline = performance.now() + timeout;
+  let sawEdge = false;
+  return new Promise(resolve => {
+    function forceMiss() {
+      const rect = ball.getBoundingClientRect();
+      const ballX = rect.left + rect.width / 2;
+      const ballY = rect.top + rect.height / 2;
+      if (ballX < edge || ballX > innerWidth - edge) sawEdge = true;
+      document.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: ballX < innerWidth / 2 ? 40 : innerWidth - 40,
+        clientY: ballY < innerHeight / 2 ? innerHeight - 60 : 60,
+        pointerType: 'mouse',
+      }));
+      if (sawEdge && Math.abs(ballX - innerWidth / 2) <= centerTolerance) {
+        resolve({
+          reset: true,
+          score: canvas.dataset.pongScore,
+          brightness: canvas.dataset.pongBrightness,
+          scoreText: scoreTerminal.textContent,
+        });
+      } else if (performance.now() >= deadline) {
+        resolve({
+          reset: false,
+          score: canvas.dataset.pongScore,
+          brightness: canvas.dataset.pongBrightness,
+          scoreText: scoreTerminal.textContent,
+        });
+      } else {
+        requestAnimationFrame(forceMiss);
+      }
+    }
+    forceMiss();
+  });
+}, {
+  timeout: SCORE_WAIT_MS,
+  edge: GOAL_EDGE_PROBE_PX,
+  centerTolerance: GOAL_RESET_CENTER_TOLERANCE_PX,
+});
+report(
+  'missed serves before the first paddle return leave the hidden score at zero',
+  lockedScoreAfterMiss.reset &&
+    lockedScoreAfterMiss.score === '0:0' &&
+    lockedScoreAfterMiss.brightness === '0' &&
+    lockedScoreAfterMiss.scoreText === '',
+  `reset=${lockedScoreAfterMiss.reset} score=${lockedScoreAfterMiss.score} brightness=${lockedScoreAfterMiss.brightness} text=${lockedScoreAfterMiss.scoreText}`
+);
 
 const impactSeen = await desktop.page.evaluate(async timeout => {
   const ball = document.querySelector('[data-pong-ball-emphasis]');
@@ -329,6 +387,7 @@ const foreground = await desktop.page.evaluate(async timeout => {
           ballColor: ballStyle.backgroundColor,
           ballOpacity: ballStyle.opacity,
           ballCanvasAlpha: canvas.getContext('2d').getImageData(pixelX, pixelY, 1, 1).data[3],
+          brightness: canvas.dataset.pongBrightness,
           paddleTone: canvas.dataset.pongPaddles,
           scoreText: scoreTerminal.textContent,
           leftColor: getComputedStyle(leftPaddle).backgroundColor,
@@ -346,11 +405,14 @@ const foreground = await desktop.page.evaluate(async timeout => {
   });
 }, FOREGROUND_WAIT_MS);
 report(
-  'first paddle return lights the game and types the score',
-  foreground.seen && foreground.paddleTone === 'bright' && foreground.scoreText === 'pong 0:0'
+  'first paddle return enters the first brightness stage and types the score',
+  foreground.seen &&
+    foreground.brightness === '1' &&
+    foreground.paddleTone === 'bright' &&
+    foreground.scoreText === 'pong 0:0'
 );
 report(
-  'active paddles exactly match the unlocked ball',
+  'first-stage paddles exactly match the unlocked ball',
   foreground.seen &&
     foreground.ballOpacity === '0.2' &&
     foreground.ballCanvasAlpha === 0 &&
@@ -381,9 +443,83 @@ const unlockedBrightness = await desktop.page.evaluate(async duration => {
   });
 }, BRIGHTNESS_SAMPLE_MS);
 report(
-  'unlocked ball never dims below the foreground opacity',
+  'first-stage ball never dims below its permanent opacity',
   unlockedBrightness.sawUnlocked && unlockedBrightness.minimumOpacity >= 0.2,
   `minimum=${unlockedBrightness.minimumOpacity}`
+);
+
+const brightnessProgression = await desktop.page.evaluate(async timeout => {
+  const ball = document.querySelector('[data-pong-ball-emphasis]');
+  const canvas = document.querySelector('[data-pong-background]');
+  const leftPaddle = document.querySelector('[data-pong-paddle-emphasis="left"]');
+  const rightPaddle = document.querySelector('[data-pong-paddle-emphasis="right"]');
+  const deadline = performance.now() + timeout;
+  const settled = [];
+  return new Promise(resolve => {
+    function followBall() {
+      const rect = ball.getBoundingClientRect();
+      document.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+        pointerType: 'mouse',
+      }));
+      const stage = Number(canvas.dataset.pongBrightness);
+      if (
+        stage >= 2 &&
+        ball.dataset.pongEmphasis === 'unlocked' &&
+        !settled.some(sample => sample.stage === stage)
+      ) {
+        settled.push({
+          stage,
+          ballOpacity: getComputedStyle(ball).opacity,
+          leftOpacity: getComputedStyle(leftPaddle).opacity,
+          rightOpacity: getComputedStyle(rightPaddle).opacity,
+        });
+      }
+      if (settled.some(sample => sample.stage === 4) || performance.now() >= deadline) {
+        resolve(settled);
+      } else {
+        requestAnimationFrame(followBall);
+      }
+    }
+    followBall();
+  });
+}, BRIGHTNESS_PROGRESSION_WAIT_MS);
+report(
+  'successive paddle returns settle at all four brightness stages',
+  JSON.stringify(brightnessProgression) === JSON.stringify([
+    { stage: 2, ballOpacity: '0.4', leftOpacity: '0.4', rightOpacity: '0.4' },
+    { stage: 3, ballOpacity: '0.6', leftOpacity: '0.6', rightOpacity: '0.6' },
+    { stage: 4, ballOpacity: '0.8', leftOpacity: '0.8', rightOpacity: '0.8' },
+  ]),
+  JSON.stringify(brightnessProgression)
+);
+
+const finalBrightness = await desktop.page.evaluate(async duration => {
+  const ball = document.querySelector('[data-pong-ball-emphasis]');
+  const canvas = document.querySelector('[data-pong-background]');
+  const deadline = performance.now() + duration;
+  let minimumOpacity = Number.POSITIVE_INFINITY;
+  return new Promise(resolve => {
+    function sample() {
+      minimumOpacity = Math.min(minimumOpacity, Number(getComputedStyle(ball).opacity));
+      if (performance.now() >= deadline) {
+        resolve({
+          stage: canvas.dataset.pongBrightness,
+          minimumOpacity,
+        });
+      } else {
+        requestAnimationFrame(sample);
+      }
+    }
+    sample();
+  });
+}, BRIGHTNESS_SAMPLE_MS);
+report(
+  'fourth-stage ball stays at its permanent brightness',
+  finalBrightness.stage === '4' && finalBrightness.minimumOpacity >= 0.8,
+  `stage=${finalBrightness.stage} minimum=${finalBrightness.minimumOpacity}`
 );
 
 const scoreAfterPoint = await desktop.page.evaluate(async timeout => {
@@ -422,8 +558,9 @@ const scoreAfterPoint = await desktop.page.evaluate(async timeout => {
         observer.disconnect();
         resolve({
           visibilityPersisted: canvas.dataset.pongReveal === 'unlocked' &&
+          canvas.dataset.pongBrightness === '4' &&
           canvas.dataset.pongPaddles === 'bright' &&
-          paddleOpacities.every(opacity => opacity === '0.2'),
+          paddleOpacities.every(opacity => opacity === '0.8'),
           sawClear,
           score: nextScore,
           scoreText: scoreTerminal.textContent,
@@ -443,7 +580,7 @@ const scoreAfterPoint = await desktop.page.evaluate(async timeout => {
     forceMiss();
   });
 }, SCORE_WAIT_MS);
-report('visibility unlock and bright paddles persist after a point', scoreAfterPoint.visibilityPersisted);
+report('fourth-stage brightness persists after a point', scoreAfterPoint.visibilityPersisted);
 report(
   'a goal clears and retypes the terminal score',
   scoreAfterPoint.sawClear &&
@@ -467,6 +604,7 @@ report(
   'inactivity returns Pong to the dormant court',
   canvas.state === 'sleeping' &&
     canvas.ballPresence === 'dormant' &&
+    canvas.brightness === '4' &&
     canvas.paddleTone === 'dim' &&
     canvas.reveal === 'locked' &&
     canvas.score === '0:0' &&
@@ -491,11 +629,15 @@ report(
   'the next mouse movement restores the preserved game immediately',
   canvas.state === 'paused' &&
     canvas.ballPresence === 'spawned' &&
+    canvas.brightness === '4' &&
     canvas.paddleTone === 'bright' &&
     canvas.reveal === 'unlocked' &&
     canvas.score === scoreBeforeSleep &&
     canvas.scoreText === `pong ${scoreBeforeSleep}` &&
     canvas.opacity === '0.12' &&
+    canvas.ballOpacity === '0.8' &&
+    canvas.leftPaddleOpacity === '0.8' &&
+    canvas.rightPaddleOpacity === '0.8' &&
     !(await ballPositionChanges(desktop.page)),
   `state=${canvas.state} score=${canvas.score}/${canvas.scoreText}`
 );
@@ -593,6 +735,7 @@ report(
   'Escape dismisses active Pong back to the dormant court',
   canvas.state === 'dismissed' &&
     canvas.ballPresence === 'dormant' &&
+    canvas.brightness === '4' &&
     canvas.paddleTone === 'dim' &&
     canvas.reveal === 'locked' &&
     canvas.score === '0:0' &&
@@ -624,32 +767,29 @@ report(
 );
 
 await desktop.page.keyboard.press('Escape');
-await desktop.page.waitForFunction(() => document.querySelector('[data-pong-background]').dataset.pongState === 'paused');
+await desktop.page.waitForFunction(() => document.querySelector('[data-pong-background]').dataset.pongState === 'active');
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
 paddles = await desktop.page.evaluate(readPaddles);
 report(
-  'a second Escape restores the preserved game in its paused state',
-  canvas.state === 'paused' &&
+  'a second Escape restores the preserved running game',
+  canvas.state === 'active' &&
     canvas.ballPresence === 'spawned' &&
+    canvas.brightness === '4' &&
     canvas.paddleTone === 'bright' &&
     canvas.reveal === 'unlocked' &&
     canvas.score !== '0:0' &&
     canvas.scoreText === `pong ${canvas.score}` &&
-    canvas.leftPaddleOpacity === '0.2' &&
-    canvas.rightPaddleOpacity === '0.2' &&
+    canvas.leftPaddleOpacity === '0.8' &&
+    canvas.rightPaddleOpacity === '0.8' &&
     canvas.opacity === '0.12' &&
     paddles.left.center === dismissedPaddles.left.center &&
     paddles.right.center === dismissedPaddles.right.center,
   `state=${canvas.state} score=${canvas.score}/${canvas.scoreText} paddles=${paddles.left.center}/${paddles.right.center}`
 );
-report('Escape leaves the restored ball paused', !(await ballPositionChanges(desktop.page)));
-
-await desktop.page.keyboard.press('p');
-canvas = await desktop.page.evaluate(readCanvas);
 report(
-  'P resumes the Escape-paused game',
-  canvas.state === 'active' && (await ballPositionChanges(desktop.page))
+  'Escape resumes the ball when it was running before dismissal',
+  await ballPositionChanges(desktop.page)
 );
 
 await desktop.page.keyboard.press('p');
@@ -687,9 +827,11 @@ report(
   'refresh resets dismissal and restores discovery',
   canvas.state === 'idle' &&
     canvas.ballPresence === 'dormant' &&
+    canvas.brightness === '0' &&
     canvas.paddleTone === 'dim' &&
     canvas.scoreText === '' &&
     rediscoveredCanvas.state === 'active' &&
+    rediscoveredCanvas.brightness === '0' &&
     rediscoveredCanvas.reveal === 'locked' &&
     rediscoveredCanvas.paddleTone === 'dim' &&
     rediscoveredCanvas.scoreText === ''
@@ -746,6 +888,39 @@ report(
   `ball=${canvas.ballPresence}/${canvas.ballEmphasis}/${canvas.ballOpacity} paddles=${canvas.paddleTone}/${canvas.leftPaddleOpacity}/${canvas.rightPaddleOpacity} score=${canvas.scoreText}`
 );
 
+await reduced.page.keyboard.press('Escape');
+await reduced.page.waitForFunction(() => (
+  document.documentElement.dataset.animationMode === 'force' &&
+  document.querySelector('[data-pong-background]').dataset.pongState === 'active'
+));
+await reduced.page.waitForTimeout(SERVE_SETTLE_MS);
+canvas = await reduced.page.evaluate(readCanvas);
+report(
+  'Escape opts system reduced-motion users into a running game',
+  canvas.mode === 'force' &&
+    canvas.state === 'active' &&
+    canvas.ballPresence === 'spawned' &&
+    canvas.brightness === '0' &&
+    canvas.opacity === '0.12' &&
+    (await ballPositionChanges(reduced.page)),
+  `mode=${canvas.mode} state=${canvas.state} ball=${canvas.ballPresence}`
+);
+await reduced.page.waitForFunction(
+  () => document.querySelector('[data-pong-background]').dataset.pongState === 'sleeping',
+  null,
+  { timeout: INACTIVITY_HIDE_MS + 2000 }
+);
+await reduced.page.keyboard.press('Escape');
+await reduced.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+canvas = await reduced.page.evaluate(readCanvas);
+report(
+  'Escape restarts the reduced-motion game after inactivity',
+  canvas.mode === 'force' &&
+    canvas.state === 'active' &&
+    (await ballPositionChanges(reduced.page)),
+  `mode=${canvas.mode} state=${canvas.state}`
+);
+
 for (const query of ['?animate=1', '?animate=true', '?animate=anything']) {
   await reduced.page.goto(`${SITE_URL}${query}`, { waitUntil: 'domcontentloaded' });
   canvas = await reduced.page.evaluate(readCanvas);
@@ -788,6 +963,19 @@ report(
     canvas.scoreText === '' &&
     canvas.bootTyping === false,
   `mode=${canvas.mode} state=${canvas.state} ball=${canvas.ballPresence} paddles=${canvas.paddleTone} score=${canvas.scoreText} typing=${canvas.bootTyping}`
+);
+await reduced.page.keyboard.press('Escape');
+await reduced.page.keyboard.press('p');
+await reduced.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+canvas = await reduced.page.evaluate(readCanvas);
+report(
+  'Escape does not override explicit animation disablement',
+  canvas.mode === 'disable' &&
+    canvas.state === 'reduced-motion' &&
+    canvas.ballPresence === 'dormant' &&
+    canvas.brightness === '0' &&
+    !(await canvasChanges(reduced.page)),
+  `mode=${canvas.mode} state=${canvas.state}`
 );
 report('reduced-motion run has no browser errors', reduced.errors.length === 0, reduced.errors.join(' | '));
 await reduced.context.close();
