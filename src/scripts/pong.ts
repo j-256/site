@@ -21,6 +21,13 @@ import {
   getBallEmphasis,
   PONG_FOREGROUND_OPACITY,
 } from '../lib/pong-visibility';
+import {
+  assignPaddleTouches,
+  resolvePaddleTouches,
+  type PaddleTouchAssignment,
+  type PaddleTouchPoints,
+  type TouchPoint,
+} from '../lib/pong-touch';
 
 const CANVAS_STATE = Object.freeze({
   IDLE: 'idle',
@@ -129,6 +136,7 @@ export function initPongBackground(
   const abortController = new AbortController();
   const listenerOptions = { signal: abortController.signal };
   const passiveListenerOptions = { passive: true, signal: abortController.signal };
+  const touchListenerOptions = { passive: false, signal: abortController.signal };
   const pressedCodes = new Set<string>();
   let court = viewportSize();
   let state: PongState = createPongState(court, initialServeDirection());
@@ -139,7 +147,7 @@ export function initPongBackground(
   let animationFrame = 0;
   let lastFrameTime = 0;
   let previousMouse: Point | null = null;
-  let previousTouches = new Map<number, Point>();
+  let touchAssignment: PaddleTouchAssignment | null = null;
   let discoveryActivityStartedAt = 0;
   let lastDiscoveryMovementAt = 0;
   let discoveryTravel = 0;
@@ -206,6 +214,10 @@ export function initPongBackground(
   function checkInactivity(): void {
     inactivityTimer = 0;
     if (!gameIsVisible() || motionIsReduced()) return;
+    if (touchAssignment !== null) {
+      noteGameActivity();
+      return;
+    }
     const remaining = INACTIVITY_HIDE_DELAY_MS - (performance.now() - lastGameActivityAt);
     if (remaining > 0) {
       inactivityTimer = window.setTimeout(checkInactivity, remaining);
@@ -486,6 +498,7 @@ export function initPongBackground(
     if (!active) return;
     paused = true;
     dismissed = !dismissed;
+    touchAssignment = null;
     ballImpact = 0;
     pressedCodes.clear();
     stopAnimation();
@@ -504,17 +517,28 @@ export function initPongBackground(
       wakeSleepingGame(true);
       return;
     }
-    paused = !paused;
+    if (paused) resumeGame();
+    else pauseGame();
+  }
+
+  function pauseGame(): void {
+    if (!active || dismissed || sleeping || paused) return;
+    paused = true;
     pressedCodes.clear();
     syncCanvasState();
     noteGameActivity();
-    if (paused) {
-      ballImpact = 0;
-      stopAnimation();
-      draw();
-    } else {
-      startAnimation();
-    }
+    ballImpact = 0;
+    stopAnimation();
+    draw();
+  }
+
+  function resumeGame(): void {
+    if (!active || dismissed || sleeping || !paused) return;
+    paused = false;
+    pressedCodes.clear();
+    syncCanvasState();
+    noteGameActivity();
+    startAnimation();
   }
 
   function movePaddleAt(point: Point): void {
@@ -540,35 +564,48 @@ export function initPongBackground(
     if (discoveryMovementIsSustained(distance, performance.now())) activateGame(false);
   }
 
+  function touchPoints(event: TouchEvent): TouchPoint[] {
+    return Array.from(event.touches, touch => ({
+      identifier: touch.identifier,
+      x: touch.clientX,
+      y: touch.clientY,
+    }));
+  }
+
+  function positionTouchPaddles(touches: PaddleTouchPoints): void {
+    state = setPaddleCenter(state, PADDLE_SIDE.LEFT, touches.left.y, court);
+    state = setPaddleCenter(state, PADDLE_SIDE.RIGHT, touches.right.y, court);
+  }
+
   function onTouch(event: TouchEvent): void {
     if (dismissed || motionIsReduced()) return;
-    const nextTouches = new Map<number, Point>();
-    let distance = 0;
-    for (const touch of Array.from(event.touches)) {
-      const point = { x: touch.clientX, y: touch.clientY };
-      const previous = previousTouches.get(touch.identifier);
-      if (previous) distance += Math.hypot(point.x - previous.x, point.y - previous.y);
-      nextTouches.set(touch.identifier, point);
-      movePaddleAt(point);
+    const points = touchPoints(event);
+    if (touchAssignment === null) {
+      touchAssignment = assignPaddleTouches(points, court.width);
     }
-    previousTouches = nextTouches;
+    if (touchAssignment === null) return;
+    const paddleTouches = resolvePaddleTouches(points, touchAssignment);
+    if (paddleTouches === null) return;
+
+    event.preventDefault();
     if (sleeping) wakeSleepingGame(false);
-    if (active) {
-      noteGameActivity();
-      return;
-    }
-    if (discoveryMovementIsSustained(distance, performance.now())) activateGame(false);
+    if (!active) activateGame(false);
+    else if (paused) resumeGame();
+    positionTouchPaddles(paddleTouches);
+    noteGameActivity();
   }
 
   function onTouchEnd(event: TouchEvent): void {
-    previousTouches = new Map(
-      Array.from(event.touches, touch => [
-        touch.identifier,
-        { x: touch.clientX, y: touch.clientY },
-      ])
-    );
-    if (!active && previousTouches.size === 0) resetDiscoveryActivity();
-    else if (gameIsVisible()) noteGameActivity();
+    if (touchAssignment === null) return;
+    event.preventDefault();
+    const paddleTouches = resolvePaddleTouches(touchPoints(event), touchAssignment);
+    if (paddleTouches !== null) {
+      positionTouchPaddles(paddleTouches);
+      noteGameActivity();
+      return;
+    }
+    touchAssignment = null;
+    pauseGame();
   }
 
   function onKeyDown(event: KeyboardEvent): void {
@@ -601,14 +638,20 @@ export function initPongBackground(
   }
 
   function onVisibilityChange(): void {
-    if (document.hidden) stopAnimation();
-    else startAnimation();
+    if (document.hidden) {
+      if (touchAssignment !== null) {
+        touchAssignment = null;
+        pauseGame();
+      }
+      stopAnimation();
+    } else startAnimation();
   }
 
   function onMotionPreferenceChange(): void {
     stopAnimation();
     ballImpact = 0;
     pressedCodes.clear();
+    touchAssignment = null;
     if (motionIsReduced()) stopInactivityTimer();
     syncCanvasState();
     draw();
@@ -635,10 +678,10 @@ export function initPongBackground(
   window.addEventListener('blur', () => pressedCodes.clear(), listenerOptions);
   window.addEventListener('pagehide', teardown, { once: true, signal: abortController.signal });
   document.addEventListener('pointermove', onPointerMove, passiveListenerOptions);
-  document.addEventListener('touchstart', onTouch, passiveListenerOptions);
-  document.addEventListener('touchmove', onTouch, passiveListenerOptions);
-  document.addEventListener('touchend', onTouchEnd, passiveListenerOptions);
-  document.addEventListener('touchcancel', onTouchEnd, passiveListenerOptions);
+  document.addEventListener('touchstart', onTouch, touchListenerOptions);
+  document.addEventListener('touchmove', onTouch, touchListenerOptions);
+  document.addEventListener('touchend', onTouchEnd, touchListenerOptions);
+  document.addEventListener('touchcancel', onTouchEnd, touchListenerOptions);
   document.addEventListener('keydown', onKeyDown, listenerOptions);
   document.addEventListener('keyup', onKeyUp, listenerOptions);
   document.addEventListener('visibilitychange', onVisibilityChange, listenerOptions);

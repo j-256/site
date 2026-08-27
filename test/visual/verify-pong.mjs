@@ -18,6 +18,10 @@ const BRIGHTNESS_SAMPLE_MS = 700;
 const SCORE_WAIT_MS = 5000;
 const PADDLE_POSITION_TOLERANCE = 4;
 const MIN_KEYBOARD_TRAVEL = 30;
+const PINCH_LEFT_START_X = 160;
+const PINCH_RIGHT_START_X = 230;
+const PINCH_SPREAD_STEP_PX = 20;
+const PINCH_MAX_SPREAD_PX = 120;
 
 const browser = await chromium.launch();
 let failures = 0;
@@ -133,6 +137,19 @@ async function sustainMouseMovement(page, duration) {
     await page.mouse.move(80 + (step % 2) * 48, 220 + (step % 3) * 24);
     await page.waitForTimeout(50);
     step += 1;
+  }
+}
+
+async function spreadTouchPair(cdp, leftId, rightId, leftY, rightY) {
+  for (let spread = PINCH_SPREAD_STEP_PX; spread <= PINCH_MAX_SPREAD_PX; spread += PINCH_SPREAD_STEP_PX) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [
+        { x: PINCH_LEFT_START_X - spread, y: leftY, id: leftId },
+        { x: PINCH_RIGHT_START_X + spread, y: rightY, id: rightId },
+      ],
+    });
+    await new Promise(resolve => setTimeout(resolve, 40));
   }
 }
 
@@ -783,91 +800,216 @@ const mobile = await createPage({
 });
 await mobile.page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
 const cdp = await mobile.context.newCDPSession(mobile.page);
+await mobile.page.evaluate(() => {
+  globalThis.__pongTouchProbe = [];
+  for (const type of ['touchstart', 'touchmove', 'touchend']) {
+    document.addEventListener(type, event => {
+      globalThis.__pongTouchProbe.push({
+        type,
+        touches: event.touches.length,
+        defaultPrevented: event.defaultPrevented,
+      });
+    });
+  }
+});
+
 await cdp.send('Input.dispatchTouchEvent', {
   type: 'touchStart',
-  touchPoints: [
-    { x: 40, y: 150, id: 1 },
-    { x: 350, y: 550, id: 2 },
-  ],
+  touchPoints: [{ x: 195, y: 600, id: 1 }],
 });
-await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
-canvas = await mobile.page.evaluate(readCanvas);
-report(
-  'a brief two-finger touch leaves Pong dormant',
-  canvas.state === 'idle' &&
-    canvas.paddleTone === 'dim' &&
-    canvas.scoreText === '',
-  `state=${canvas.state}`
-);
-
-const touchStartedAt = Date.now();
-let touchStep = 0;
-while (Date.now() - touchStartedAt < DISCOVERY_ACTIVATION_MS + DISCOVERY_TEST_BUFFER_MS) {
-  const offset = touchStep % 2 === 0 ? 0 : 24;
+for (const y of [540, 480, 420, 360, 300]) {
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchMove',
-    touchPoints: [
-      { x: 40, y: 150 + offset, id: 1 },
-      { x: 350, y: 550 - offset, id: 2 },
-    ],
+    touchPoints: [{ x: 195, y, id: 1 }],
   });
-  await mobile.page.waitForTimeout(50);
-  touchStep += 1;
+  await mobile.page.waitForTimeout(40);
 }
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+await mobile.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
+canvas = await mobile.page.evaluate(readCanvas);
+let mobileGesture = await mobile.page.evaluate(() => ({
+  scrollY: window.scrollY,
+  events: globalThis.__pongTouchProbe,
+}));
+report(
+  'one-finger scrolling leaves Pong dormant and keeps native touch behavior',
+  canvas.state === 'idle' &&
+    canvas.paddleTone === 'dim' &&
+    canvas.scoreText === '' &&
+    mobileGesture.scrollY > 0 &&
+    mobileGesture.events.every(event => !event.defaultPrevented),
+  `state=${canvas.state} scrollY=${mobileGesture.scrollY}`
+);
+
+await mobile.page.evaluate(() => {
+  window.scrollTo(0, 0);
+  globalThis.__pongTouchProbe = [];
+});
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
 
 await cdp.send('Input.dispatchTouchEvent', {
-  type: 'touchMove',
+  type: 'touchStart',
   touchPoints: [
-    { x: 40, y: 250, id: 1 },
-    { x: 350, y: 450, id: 2 },
+    { x: 40, y: 250, id: 3 },
+    { x: 120, y: 450, id: 4 },
+  ],
+});
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
+canvas = await mobile.page.evaluate(readCanvas);
+report(
+  'two touches on the same half do not claim the page',
+  canvas.state === 'idle',
+  `state=${canvas.state}`
+);
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+await mobile.page.evaluate(() => {
+  globalThis.__pongTouchProbe = [];
+});
+await cdp.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [{ x: PINCH_LEFT_START_X, y: 250, id: 5 }],
+});
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
+canvas = await mobile.page.evaluate(readCanvas);
+report('the first thumb alone does not activate Pong', canvas.state === 'idle');
+
+await cdp.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [
+    { x: PINCH_LEFT_START_X, y: 250, id: 5 },
+    { x: PINCH_RIGHT_START_X, y: 450, id: 6 },
   ],
 });
 await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
 paddles = await mobile.page.evaluate(readPaddles);
 canvas = await mobile.page.evaluate(readCanvas);
+mobileGesture = await mobile.page.evaluate(() => ({
+  scrollY: window.scrollY,
+  events: globalThis.__pongTouchProbe,
+}));
 report(
-  'sustained touch movement starts Pong',
+  'the second thumb activates Pong immediately and positions both paddles',
   canvas.state === 'active' &&
     canvas.paddleTone === 'dim' &&
-    canvas.scoreText === '',
-  `state=${canvas.state}`
+    canvas.scoreText === '' &&
+    Math.abs(paddles.left.center - 250) <= PADDLE_POSITION_TOLERANCE &&
+    Math.abs(paddles.right.center - 450) <= PADDLE_POSITION_TOLERANCE,
+  `state=${canvas.state} leftY=${paddles.left.center} rightY=${paddles.right.center}`
+);
+report(
+  'Pong claims only the completed two-thumb gesture',
+  mobileGesture.scrollY === 0 &&
+    mobileGesture.events.some(event => event.touches === 1 && !event.defaultPrevented) &&
+    mobileGesture.events.some(event => event.touches === 2 && event.defaultPrevented),
+  `scrollY=${mobileGesture.scrollY} events=${JSON.stringify(mobileGesture.events)}`
 );
 
-await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-await cdp.send('Input.dispatchTouchEvent', {
-  type: 'touchStart',
-  touchPoints: [
-    { x: 40, y: 250, id: 1 },
-    { x: 350, y: 450, id: 2 },
-  ],
-});
-await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
-paddles = await mobile.page.evaluate(readPaddles);
+await spreadTouchPair(cdp, 5, 6, 250, 450);
+mobileGesture = await mobile.page.evaluate(() => ({
+  scrollY: window.scrollY,
+  scale: window.visualViewport?.scale ?? 1,
+  events: globalThis.__pongTouchProbe,
+}));
 report(
-  'two touches independently position both paddles after discovery',
-  Math.abs(paddles.left.center - 250) <= PADDLE_POSITION_TOLERANCE &&
-    Math.abs(paddles.right.center - 450) <= PADDLE_POSITION_TOLERANCE,
-  `leftY=${paddles.left.center} rightY=${paddles.right.center}`
+  'two-thumb play suppresses page movement and pinch zoom',
+  mobileGesture.scrollY === 0 &&
+    mobileGesture.scale === 1 &&
+    mobileGesture.events.some(event => (
+      event.type === 'touchmove' && event.touches === 2 && event.defaultPrevented
+    )),
+  `scrollY=${mobileGesture.scrollY} scale=${mobileGesture.scale}`
 );
 
 await cdp.send('Input.dispatchTouchEvent', {
   type: 'touchMove',
   touchPoints: [
-    { x: 40, y: 300, id: 1 },
-    { x: 350, y: 400, id: 2 },
+    { x: 40, y: 300, id: 5 },
+    { x: 350, y: 400, id: 6 },
   ],
 });
 await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
 paddles = await mobile.page.evaluate(readPaddles);
 report(
-  'two-finger movement keeps updating both paddles',
+  'two-thumb movement updates both paddles',
   Math.abs(paddles.left.center - 300) <= PADDLE_POSITION_TOLERANCE &&
     Math.abs(paddles.right.center - 400) <= PADDLE_POSITION_TOLERANCE,
   `leftY=${paddles.left.center} rightY=${paddles.right.center}`
 );
+
+await cdp.send('Input.dispatchTouchEvent', {
+  type: 'touchMove',
+  touchPoints: [
+    { x: 300, y: 320, id: 5 },
+    { x: 90, y: 380, id: 6 },
+  ],
+});
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
+paddles = await mobile.page.evaluate(readPaddles);
+report(
+  'assigned thumbs keep controlling their original paddles after crossing',
+  Math.abs(paddles.left.center - 320) <= PADDLE_POSITION_TOLERANCE &&
+    Math.abs(paddles.right.center - 380) <= PADDLE_POSITION_TOLERANCE,
+  `leftY=${paddles.left.center} rightY=${paddles.right.center}`
+);
+
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
+canvas = await mobile.page.evaluate(readCanvas);
+report(
+  'lifting either thumb pauses the ball and paddles',
+  canvas.state === 'paused' && !(await ballPositionChanges(mobile.page)),
+  `state=${canvas.state}`
+);
+
+await cdp.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [
+    { x: 40, y: 260, id: 7 },
+    { x: 350, y: 440, id: 8 },
+  ],
+});
+await mobile.page.waitForTimeout(INPUT_SETTLE_MS);
+canvas = await mobile.page.evaluate(readCanvas);
+await mobile.page.waitForTimeout(SERVE_SETTLE_MS);
+report(
+  'a new two-thumb gesture resumes immediately',
+  canvas.state === 'active' && (await ballPositionChanges(mobile.page)),
+  `state=${canvas.state}`
+);
 await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 report('mobile run has no browser errors', mobile.errors.length === 0, mobile.errors.join(' | '));
 await mobile.context.close();
+
+const pinchControl = await createPage({
+  viewport: MOBILE_VIEWPORT,
+  reducedMotion: 'no-preference',
+  hasTouch: true,
+  isMobile: true,
+});
+await pinchControl.page.goto(`${SITE_URL}?animate=false`, { waitUntil: 'domcontentloaded' });
+const pinchControlCdp = await pinchControl.context.newCDPSession(pinchControl.page);
+await pinchControlCdp.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [
+    { x: PINCH_LEFT_START_X, y: 250, id: 1 },
+    { x: PINCH_RIGHT_START_X, y: 450, id: 2 },
+  ],
+});
+await spreadTouchPair(pinchControlCdp, 1, 2, 250, 450);
+const pinchControlScale = await pinchControl.page.evaluate(() => window.visualViewport?.scale ?? 1);
+report(
+  'pinch probe zooms when Pong is disabled',
+  pinchControlScale > 1,
+  `scale=${pinchControlScale}`
+);
+await pinchControlCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+report(
+  'pinch control run has no browser errors',
+  pinchControl.errors.length === 0,
+  pinchControl.errors.join(' | ')
+);
+await pinchControl.context.close();
 
 await browser.close();
 if (failures > 0) {
