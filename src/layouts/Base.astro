@@ -4,14 +4,13 @@ import AnimationPreference from '../components/AnimationPreference.astro';
 import PongBackground from '../components/PongBackground.astro';
 import { siteHost, siteUrl } from '../lib/site-host';
 import { links } from '../data/links';
-import { WORDMARK, TAGLINE } from '../data/site';
+import { DESCRIPTION, WORDMARK } from '../data/site';
 
 const SITE_HOST = siteHost();
 const SITE_URL = siteUrl();
 
 const JOB_TITLE = 'Principal Support Engineer';
 const TITLE = `${WORDMARK} - ${SITE_HOST}`;
-const DESCRIPTION = `${WORDMARK}: ${TAGLINE} ${JOB_TITLE} @ Salesforce B2C Commerce.`;
 
 const sameAs = links
   .map(l => l.target)
