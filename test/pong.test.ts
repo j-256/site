@@ -11,7 +11,8 @@ import {
 } from '../src/lib/pong';
 
 const COURT = Object.freeze({ width: 1000, height: 600 });
-const EXPECTED_PADDLE_HIT_SPEED_MULTIPLIER = 1.08;
+const EXPECTED_MAX_BALL_SPEED_MULTIPLIER = 2.7;
+const EXPECTED_PADDLE_HIT_SPEED_MULTIPLIER = 1.096;
 
 function playingState(): PongState {
   const state = createPongState(COURT);
@@ -67,6 +68,14 @@ describe('Pong state', () => {
 });
 
 describe('Pong physics', () => {
+  it('caps the ball at 2.7 times its base speed', () => {
+    const geometry = getCourtGeometry(COURT);
+
+    expect(geometry.maxBallSpeed).toBeCloseTo(
+      geometry.baseBallSpeed * EXPECTED_MAX_BALL_SPEED_MULTIPLIER
+    );
+  });
+
   it('waits before serving and does not mutate its input', () => {
     const state = createPongState(COURT, 1);
     const waiting = advancePong(state, COURT, PONG_SERVE_DELAY_SECONDS - 0.01, () => 0);
@@ -113,7 +122,7 @@ describe('Pong physics', () => {
     expect(next.ball.vy).toBeGreaterThan(0);
   });
 
-  it('accelerates the ball by eight percent after every paddle return', () => {
+  it('accelerates the ball by 9.6 percent after every paddle return', () => {
     const geometry = getCourtGeometry(COURT);
     const leftReturn: PongState = {
       ...playingState(),
@@ -143,7 +152,7 @@ describe('Pong physics', () => {
     expect(ballSpeed(afterRightReturn)).toBeCloseTo(
       firstReturnSpeed * EXPECTED_PADDLE_HIT_SPEED_MULTIPLIER
     );
-    expect(ballSpeed(afterRightReturn)).toBeLessThan(geometry.baseBallSpeed * 1.2);
+    expect(ballSpeed(afterRightReturn)).toBeLessThan(geometry.maxBallSpeed);
   });
 
   it('resets the accelerated ball to base speed after a goal', () => {
