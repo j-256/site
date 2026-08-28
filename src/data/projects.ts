@@ -27,6 +27,7 @@ export interface ProjectListing {
 export const projectListings: readonly ProjectListing[] = Object.freeze([
   { repository: 'j-256/stowplan', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/hookrelay', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
+  { repository: 'j-256/endpoint-monitor', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/d1-r2-starter-factory', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/reorg', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/ccam', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
