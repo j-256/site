@@ -5,6 +5,8 @@ export const PROJECT_ARTIFACT = Object.freeze({
 
 export type ProjectArtifact = (typeof PROJECT_ARTIFACT)[keyof typeof PROJECT_ARTIFACT];
 
+export const SITE_REPOSITORY = 'j-256/site';
+
 export const PROJECT_META_SOURCE = Object.freeze({
   PUSHED: 'pushed',
   RELEASE: 'release',
@@ -33,7 +35,7 @@ export const projectListings: readonly ProjectListing[] = Object.freeze([
   { repository: 'j-256/ccam', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/agent-skills', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/stream-eval', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
-  { repository: 'j-256/site', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.PUSHED } },
+  { repository: SITE_REPOSITORY, artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.PUSHED } },
   { repository: 'j-256/qlomni', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/git-crypt-vscode', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/persistent-clicker', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },

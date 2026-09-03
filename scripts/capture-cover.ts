@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { rename, rm, writeFile } from 'node:fs/promises';
+import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -7,12 +7,26 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { preview } from 'astro';
 import { chromium } from 'playwright';
 
-import { assertProjectCoverImage } from '../src/lib/project-assets';
+import { SITE_REPOSITORY } from '../src/data/projects';
+import {
+  PROJECT_RELEASE_MANIFEST_PATH,
+  assertProjectCoverImage,
+  projectCoverAssetPath,
+} from '../src/lib/project-assets';
+import {
+  parseProjectReleaseManifest,
+  projectCoverSha256,
+  updateProjectReleaseCover,
+} from '../src/lib/project-release-manifest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(HERE, '..');
 const COVER_PATH = resolve(PROJECT_ROOT, 'docs/screenshots/cover.png');
+const DIST_DIRECTORY = resolve(PROJECT_ROOT, 'dist');
+const DIST_COVER_PATH = resolve(DIST_DIRECTORY, projectCoverAssetPath(SITE_REPOSITORY));
+const DIST_MANIFEST_PATH = resolve(DIST_DIRECTORY, PROJECT_RELEASE_MANIFEST_PATH);
 const PREVIEW_HOST = '127.0.0.1';
+const SUMMARY_PATH = process.env.GITHUB_STEP_SUMMARY;
 
 export const CAPTURE_VIEWPORT = Object.freeze({ width: 1440, height: 1000 });
 export const CAPTURE_CONTEXT = Object.freeze({
@@ -41,8 +55,8 @@ export class CaptureCliError extends Error {
 export function captureHelp(): string {
   return `Usage: npm run capture:cover -- [options]
 
-Build and render the candidate site locally, then replace
-docs/screenshots/cover.png with a deterministic 1440x1000 PNG.
+Build and render the candidate site locally, replace docs/screenshots/cover.png
+with a deterministic 1440x1000 PNG, and synchronize its project asset in dist.
 
 Options:
   -h, --help  Show this help and exit
@@ -95,6 +109,39 @@ function runBuild(): void {
     throw new CaptureCliError(
       `production build exited with status ${result.status ?? 'unknown'}`,
       EXIT_STATUS.RUNTIME_FAILURE
+    );
+  }
+}
+
+async function replaceFile(path: string, contents: Uint8Array | string): Promise<void> {
+  const temporaryPath = `${path}.${process.pid}.tmp`;
+  try {
+    await writeFile(temporaryPath, contents, { flag: 'wx' });
+    await rename(temporaryPath, path);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
+}
+
+async function synchronizeBuiltCover(image: Uint8Array): Promise<boolean> {
+  const previousCover = await readFile(DIST_COVER_PATH);
+  const manifest = parseProjectReleaseManifest(
+    JSON.parse(await readFile(DIST_MANIFEST_PATH, 'utf8')) as unknown
+  );
+  const updatedManifest = updateProjectReleaseCover(manifest, SITE_REPOSITORY, image);
+  await replaceFile(DIST_COVER_PATH, image);
+  await replaceFile(DIST_MANIFEST_PATH, `${JSON.stringify(updatedManifest, null, 2)}\n`);
+  return projectCoverSha256(previousCover) !== projectCoverSha256(image);
+}
+
+async function emitCoverSummary(changed: boolean): Promise<void> {
+  const status = changed ? 'updated' : 'unchanged';
+  console.log(`Generated project cover: ${SITE_REPOSITORY}: cover ${status}`);
+  if (SUMMARY_PATH) {
+    await writeFile(
+      SUMMARY_PATH,
+      `\n### Generated site cover\n\n- ${SITE_REPOSITORY}: cover ${status}\n`,
+      { flag: 'a' }
     );
   }
 }
@@ -187,19 +234,15 @@ async function captureCover(): Promise<void> {
       );
     }
 
-    const temporaryPath = `${COVER_PATH}.${process.pid}.tmp`;
-    try {
-      await writeFile(temporaryPath, image, { flag: 'wx' });
-      await rename(temporaryPath, COVER_PATH);
-    } finally {
-      await rm(temporaryPath, { force: true });
-    }
+    const coverChanged = await synchronizeBuiltCover(image);
+    await replaceFile(COVER_PATH, image);
+    await emitCoverSummary(coverChanged);
   } finally {
     if (browser) await browser.close();
     await server.stop();
   }
 
-  console.log(`Wrote ${COVER_PATH}`);
+  console.log(`Wrote ${COVER_PATH} and synchronized the built project cover`);
 }
 
 export async function main(argumentsList = process.argv.slice(2)): Promise<void> {

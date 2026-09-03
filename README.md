@@ -45,7 +45,7 @@ npm run capture:cover      # build locally and refresh the documentation cover
 npm run deploy:dry-run     # validate the current dist artifact with Wrangler
 ```
 
-Install the matching browser with `npx playwright install chromium` before using the cover command. It renders the candidate production build locally at 1440x1000 with dark colors and reduced motion, then replaces `docs/screenshots/cover.png`; it does not capture or deploy the live site.
+Install the matching browser with `npx playwright install chromium` before using the cover command. It renders the candidate production build locally at 1440x1000 with dark colors and reduced motion, replaces `docs/screenshots/cover.png`, and synchronizes that image into the built site's self-preview; it does not capture or deploy the live site.
 
 ## Pong
 
@@ -55,7 +55,9 @@ A present `animate` query parameter forces both the boot transcript and Pong to 
 
 ## Deployment
 
-GitHub Actions owns the production pipeline. Every push to `main`, weekly refresh, and manual workflow run installs the locked dependencies, runs the tests, builds once, and deploys that exact `dist` directory to the `site` Cloudflare Worker through Wrangler. Pull requests perform the same verification without deploying. The deploy step receives `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from repository Actions secrets; `wrangler.jsonc` contains only non-secret deployment configuration.
+GitHub Actions owns the production pipeline. Every push to `main`, weekly refresh, and manual workflow run installs the locked dependencies, runs the tests, fetches current project descriptions and covers, refreshes the site's own cover, and deploys the resulting `dist` directory to the `site` Cloudflare Worker through Wrangler. The build log and job summary identify each repository whose version/date, description, or cover changed relative to the prior deployed release. The refreshed site cover is also committed when it changed; that workflow-authored push does not start another workflow run. Pull requests perform the same tests and production build with read-only repository access, without capturing, committing, or deploying.
+
+Run a release manually from the Actions tab or with `gh workflow run deploy.yml --repo j-256/site`. The deploy step receives `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from repository Actions secrets; `wrangler.jsonc` contains only non-secret deployment configuration.
 
 `npm run deploy` publishes the existing `dist` directory and assumes it has already been verified. Use `npm run deploy:dry-run` to validate the artifact and configuration without publishing.
 
@@ -72,7 +74,7 @@ GitHub Actions owns the production pipeline. Every push to `main`, weekly refres
 
 The terminal project rows remain the primary interface. On fine-pointer devices, dwelling on the compact entry line fills a progress bar before opening a non-interactive terminal-framed cover preview. The description and padded click target do not trigger it, pointer focus does not pin it open, and Escape hides it. Keyboard focus uses the same dwell; touch layouts retain the terminal list without a preview.
 
-Routine development and builds write fetched display data to the ignored `src/data/project-data.runtime.json`, so starting the site does not modify tracked files. `src/data/project-data.cache.json` is the committed fallback snapshot used when runtime data is unavailable. Whichever data file is loaded supplies fallback values when an individual metadata lookup fails. Run `npm run refresh-project-cache` when a verified result should replace the committed snapshot. Neither data file can make a repository or cover publishable: visibility and the revision-bound cover are verified on every fetch. Generated project images live under the ignored `public/project-assets/`. Set `PROJECT_REPOSITORY_ROOT` to a directory of local Git checkouts to read each committed cover locally while still verifying repository state and display metadata with GitHub.
+Routine development and builds write fetched display data to the ignored `src/data/project-data.runtime.json`, so starting the site does not modify tracked files. `src/data/project-data.cache.json` is the committed fallback snapshot used when runtime data is unavailable. Whichever data file is loaded supplies fallback values when an individual metadata lookup fails. Run `npm run refresh-project-cache` when a verified result should replace the committed snapshot. Neither data file can make a repository or cover publishable: visibility and the revision-bound cover are verified on every fetch. Generated project images and the release comparison manifest live under the ignored `public/project-assets/`; the deployed manifest becomes the next release's comparison baseline, with the committed cache as a fallback. Set `PROJECT_REPOSITORY_ROOT` to a directory of local Git checkouts to read each committed cover locally while still verifying repository state and display metadata with GitHub.
 
 ## License
 

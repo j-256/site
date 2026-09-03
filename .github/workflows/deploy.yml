@@ -9,9 +9,8 @@ on:
     - cron: '0 6 * * 0'
   workflow_dispatch:
 
-# The build job verifies and deploys the same artifact
-# Pull requests stop after verification, while other runs publish to Cloudflare
-# The weekly cron refreshes the live site with upstream repository metadata
+# Pull requests verify with read-only access
+# Releases report project changes, refresh the site cover, and deploy
 permissions: {}
 
 concurrency:
@@ -22,7 +21,8 @@ env:
   SITE_HOST: ${{ vars.SITE_HOST }}
 
 jobs:
-  build:
+  verify:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,9 +42,46 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  release:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build and refresh site cover
+        run: npm run capture:cover
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_CHANGE_BASELINE: deployed
+
+      - name: Commit refreshed site cover
+        run: |
+          if git diff --quiet -- docs/screenshots/cover.png; then
+            echo "Site cover is unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/cover.png
+          git commit -m "docs: refresh site cover screenshot"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
       - name: Deploy to Cloudflare
-        if: github.event_name != 'pull_request'
-        run: npm run deploy -- --message "Deployed by GitHub Actions from ${GITHUB_SHA}"
+        run: npm run deploy -- --message "Deployed by GitHub Actions from $(git rev-parse HEAD)"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

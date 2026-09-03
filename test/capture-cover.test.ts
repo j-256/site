@@ -43,6 +43,7 @@ describe('cover capture contract', () => {
     expect(help).toContain('npm run capture:cover');
     expect(help).toContain('SITE_HOST');
     expect(help).toContain('playwright install chromium');
+    expect(help).toContain('synchronize its project asset in dist');
     expect(help).toContain('Exit statuses:');
   });
 
