@@ -12,6 +12,7 @@ import {
   parseCommitRevision,
   parseRepositoryProfile,
   normalizeGitHubOrigin,
+  classifyProjectChanges,
   classifyRow,
   staticRow,
   renderSummary,
@@ -22,6 +23,11 @@ import {
 const NOW = new Date('2026-05-23T12:00:00Z');
 const fresh = (daysAgo: number): string =>
   new Date(NOW.getTime() - daysAgo * 86400_000).toISOString();
+const UNCHANGED_CHANGES = Object.freeze({
+  value: 'unchanged' as const,
+  description: 'unchanged' as const,
+  cover: 'unchanged' as const,
+});
 
 describe('fetch-projects CLI', () => {
   it('fetches runtime data by default and accepts an option terminator', () => {
@@ -54,6 +60,7 @@ describe('fetch-projects CLI', () => {
     expect(help).toContain('npm run refresh-project-cache');
     expect(help).toContain('--update-cache');
     expect(help).toContain('PROJECT_REPOSITORY_ROOT');
+    expect(help).toContain('PROJECT_CHANGE_BASELINE');
     expect(help).toContain('Exit statuses:');
   });
 });
@@ -308,7 +315,11 @@ describe('normalizeGitHubOrigin', () => {
 });
 
 describe('classifyRow', () => {
-  const base = { repo: 'j-256/x', source: 'release' as const };
+  const base = {
+    repo: 'j-256/x',
+    source: 'release' as const,
+    changes: UNCHANGED_CHANGES,
+  };
   // A fresh-fetch success carries a cacheUpdate; a cache fallback carries only a
   // value (+warning); an error carries neither. These mirror resolveMeta's
   // output contract. Status reports provenance, not a comparison: nothing is
@@ -355,7 +366,11 @@ describe('classifyRow', () => {
 
 describe('staticRow', () => {
   it('represents a literal-meta project with a static source and no run outcome', () => {
-    const row = staticRow({ repo: 'j-256/plugin_rootfile', value: 'stable' });
+    const row = staticRow({
+      repo: 'j-256/plugin_rootfile',
+      value: 'stable',
+      changes: UNCHANGED_CHANGES,
+    });
     expect(row.source).toBe('static');
     expect(row.value).toBe('stable');
     // Never fetched: no run-outcome status
@@ -363,25 +378,119 @@ describe('staticRow', () => {
   });
 });
 
+describe('classifyProjectChanges', () => {
+  const current = {
+    value: 'v2.0.0',
+    valueVerified: true,
+    description: 'Current description',
+    coverSha256: 'b'.repeat(64),
+  };
+
+  it('identifies version, description, and cover updates independently', () => {
+    expect(classifyProjectChanges({
+      ...current,
+      baseline: {
+        value: 'v1.0.0',
+        description: 'Earlier description',
+        coverSha256: 'a'.repeat(64),
+      },
+    })).toEqual({
+      value: 'updated',
+      description: 'updated',
+      cover: 'updated',
+      previousValue: 'v1.0.0',
+    });
+  });
+
+  it('marks matching fields unchanged', () => {
+    expect(classifyProjectChanges({
+      ...current,
+      baseline: {
+        value: current.value,
+        description: current.description,
+        coverSha256: current.coverSha256,
+      },
+    })).toEqual(UNCHANGED_CHANGES);
+  });
+
+  it('distinguishes an unavailable baseline from an unverified version fetch', () => {
+    expect(classifyProjectChanges(current)).toEqual({
+      value: 'baseline',
+      description: 'baseline',
+      cover: 'baseline',
+    });
+    expect(classifyProjectChanges({
+      ...current,
+      valueVerified: false,
+      baseline: {
+        value: current.value,
+        description: current.description,
+        coverSha256: current.coverSha256,
+      },
+    }).value).toBe('unverified');
+  });
+});
+
 describe('renderSummary', () => {
   const rows: SummaryRow[] = [
-    { repo: 'j-256/sh', source: 'pushed', value: '2026-06-08', status: 'fresh' },
-    { repo: 'j-256/ccam', source: 'release', value: 'v0.1.1', status: 'fresh' },
-    { repo: 'j-256/down', source: 'release', value: 'v2.0.0', status: 'cache' },
-    { repo: 'j-256/gone', source: 'release', value: undefined, status: 'error' },
-    { repo: 'j-256/pinned', source: 'static', value: 'stable' },
+    {
+      repo: 'j-256/sh',
+      source: 'pushed',
+      value: '2026-06-08',
+      status: 'fresh',
+      changes: {
+        value: 'updated',
+        description: 'unchanged',
+        cover: 'updated',
+        previousValue: '2026-06-01',
+      },
+    },
+    {
+      repo: 'j-256/ccam',
+      source: 'release',
+      value: 'v0.1.1',
+      status: 'fresh',
+      changes: UNCHANGED_CHANGES,
+    },
+    {
+      repo: 'j-256/down',
+      source: 'release',
+      value: 'v2.0.0',
+      status: 'cache',
+      changes: { ...UNCHANGED_CHANGES, value: 'unverified' },
+    },
+    {
+      repo: 'j-256/gone',
+      source: 'release',
+      value: undefined,
+      status: 'error',
+      changes: {
+        value: 'unverified',
+        description: 'baseline',
+        cover: 'baseline',
+      },
+    },
+    {
+      repo: 'j-256/pinned',
+      source: 'static',
+      value: 'stable',
+      changes: { ...UNCHANGED_CHANGES, description: 'updated' },
+    },
   ];
 
   it('renders a markdown table with a header and one row per project', () => {
-    const md = renderSummary(rows);
+    const md = renderSummary(rows, 'deployed release manifest');
     expect(md).toMatch(/^## Project data$/m);
-    expect(md).toMatch(/\| Project \| Source \| Value \| Status \|/);
+    expect(md).toMatch(/Compared with: deployed release manifest/);
+    expect(md).toMatch(/\| Project \| Source \| Version\/date \| Fetch \|/);
     expect(md.match(/^\| j-256\//gm)).toHaveLength(5);
   });
 
-  it('reports a freshly fetched row as fresh', () => {
+  it('reports changed versions and covers by repository', () => {
     const md = renderSummary(rows);
-    expect(md).toMatch(/j-256\/sh \| pushed \| 2026-06-08 \| fresh \|/);
+    expect(md).toMatch(/j-256\/sh: version\/date 2026-06-01 -> 2026-06-08, cover updated/);
+    expect(md).toMatch(/j-256\/sh \| pushed \| 2026-06-08 \| fresh \| updated \| unchanged \| updated/);
+    expect(md).toMatch(/j-256\/pinned: description updated/);
   });
 
   it('flags a cache fallback so a stale value is obvious', () => {
@@ -410,11 +519,12 @@ describe('renderSummary', () => {
 
   it('omits zero-count buckets in an all-static run (no "0 fresh")', () => {
     const md = renderSummary([
-      { repo: 'j-256/a', source: 'static', value: 'stable' },
-      { repo: 'j-256/b', source: 'static', value: 'stable' },
+      { repo: 'j-256/a', source: 'static', value: 'stable', changes: UNCHANGED_CHANGES },
+      { repo: 'j-256/b', source: 'static', value: 'stable', changes: UNCHANGED_CHANGES },
     ]);
     expect(md).toMatch(/\*\*2 project\(s\):\*\* 2 static\./);
     expect(md).not.toMatch(/0 fresh/);
+    expect(md).toMatch(/No version\/date, description, or cover changes/);
   });
 
   it('handles an empty row list without a malformed roll-up', () => {

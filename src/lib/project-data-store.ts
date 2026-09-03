@@ -10,6 +10,7 @@ export interface ProjectDataEntry {
   url: string;
   coverWidth: number;
   coverHeight: number;
+  coverSha256: string;
 }
 
 export type ProjectData = Record<string, ProjectDataEntry>;

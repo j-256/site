@@ -1,6 +1,8 @@
 export const PROJECT_COVER_PATH = 'docs/screenshots/cover.png';
 export const PROJECT_SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
 export const PROJECT_ASSET_DIRECTORY = 'project-assets';
+export const PROJECT_RELEASE_MANIFEST_NAME = 'release-manifest.json';
+export const PROJECT_RELEASE_MANIFEST_PATH = `${PROJECT_ASSET_DIRECTORY}/${PROJECT_RELEASE_MANIFEST_NAME}`;
 
 export interface ProjectCoverDimensions {
   width: number;

@@ -11,6 +11,8 @@ import {
 import {
   PROJECT_ASSET_DIRECTORY,
   PROJECT_COVER_PATH,
+  PROJECT_RELEASE_MANIFEST_NAME,
+  PROJECT_RELEASE_MANIFEST_PATH,
   PROJECT_SCREENSHOT_MAX_BYTES,
   assertProjectCoverImage,
   assertProjectRepository,
@@ -18,11 +20,22 @@ import {
 } from '../src/lib/project-assets';
 import {
   loadProjectData,
+  projectDataPaths,
+  readProjectDataFile,
   writeProjectData,
   type ProjectData,
   type ProjectDataEntry,
 } from '../src/lib/project-data-store';
+import {
+  createProjectReleaseManifest,
+  parseProjectReleaseManifest,
+  projectChangeBaselineFromData,
+  projectCoverSha256,
+  type ProjectChangeBaseline,
+  type ProjectChangeBaselineEntry,
+} from '../src/lib/project-release-manifest';
 import { assertListedRepository } from '../src/lib/repo-visibility';
+import { siteUrl } from '../src/lib/site-host';
 
 export interface CacheEntry {
   value: string;
@@ -53,6 +66,7 @@ export interface ResolveOutput {
 
 export type MetaSourceKind = 'pushed' | 'release' | 'tag' | 'static';
 export type RowStatus = 'fresh' | 'cache' | 'error';
+export type ChangeStatus = 'baseline' | 'unchanged' | 'updated' | 'unverified';
 
 export const FETCH_MODE = Object.freeze({
   FETCH: 'fetch',
@@ -82,12 +96,34 @@ export interface SummaryRow {
   source: MetaSourceKind;
   value?: string;
   status?: RowStatus;
+  changes: ProjectChanges;
+}
+
+export interface ProjectChanges {
+  value: ChangeStatus;
+  description: ChangeStatus;
+  cover: ChangeStatus;
+  previousValue?: string;
 }
 
 export interface ClassifyInput {
   repo: string;
   source: MetaSourceKind;
   result: ResolveOutput;
+  changes: ProjectChanges;
+}
+
+export interface ProjectChangeInput {
+  baseline?: ProjectChangeBaselineEntry;
+  value: string;
+  valueVerified: boolean;
+  description: string | null;
+  coverSha256: string;
+}
+
+interface LoadedProjectBaseline {
+  data: ProjectChangeBaseline;
+  label: string;
 }
 
 export interface RepositoryProfile {
@@ -141,6 +177,7 @@ const GITHUB_ORIGIN_PATTERNS = Object.freeze([
 ]);
 const MS_PER_DAY = 86_400_000;
 const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
+const DEPLOYED_BASELINE = 'deployed';
 
 export function resolveGitHubToken(
   githubToken: string | undefined,
@@ -195,6 +232,7 @@ Options:
 Environment:
   GITHUB_TOKEN, GH_TOKEN   Optional GitHub API credentials
   PROJECT_REPOSITORY_ROOT  Optional root containing local project checkouts
+  PROJECT_CHANGE_BASELINE  Use "deployed" to compare with the live release
 
 Exit statuses:
   0  Project data fetched successfully or help shown
@@ -369,8 +407,37 @@ export function normalizeGitHubOrigin(value: string): string | null {
   return null;
 }
 
+function classifyChange(
+  baselineAvailable: boolean,
+  previous: string | null | undefined,
+  current: string | null
+): ChangeStatus {
+  if (!baselineAvailable) return 'baseline';
+  return previous === current ? 'unchanged' : 'updated';
+}
+
+export function classifyProjectChanges(input: ProjectChangeInput): ProjectChanges {
+  const baseline = input.baseline;
+  const valueBaselineAvailable = typeof baseline?.value === 'string';
+  const descriptionBaselineAvailable = baseline !== undefined && 'description' in baseline;
+  const coverBaselineAvailable = typeof baseline?.coverSha256 === 'string';
+  const valueChange = input.valueVerified
+    ? classifyChange(valueBaselineAvailable, baseline?.value, input.value)
+    : 'unverified';
+  return {
+    value: valueChange,
+    description: classifyChange(
+      descriptionBaselineAvailable,
+      baseline?.description,
+      input.description
+    ),
+    cover: classifyChange(coverBaselineAvailable, baseline?.coverSha256, input.coverSha256),
+    ...(valueChange === 'updated' ? { previousValue: baseline?.value } : {}),
+  };
+}
+
 export function classifyRow(input: ClassifyInput): SummaryRow {
-  const base = { repo: input.repo, source: input.source };
+  const base = { repo: input.repo, source: input.source, changes: input.changes };
   if (input.result.value === undefined) return { ...base, status: 'error' };
   if (!input.result.cacheUpdate) {
     return { ...base, value: input.result.value, status: 'cache' };
@@ -378,8 +445,12 @@ export function classifyRow(input: ClassifyInput): SummaryRow {
   return { ...base, value: input.result.value, status: 'fresh' };
 }
 
-export function staticRow(input: { repo: string; value: string }): SummaryRow {
-  return { repo: input.repo, source: 'static', value: input.value };
+export function staticRow(input: {
+  repo: string;
+  value: string;
+  changes: ProjectChanges;
+}): SummaryRow {
+  return { repo: input.repo, source: 'static', value: input.value, changes: input.changes };
 }
 
 const STATUS_LABEL: Record<RowStatus, string> = Object.freeze({
@@ -388,16 +459,48 @@ const STATUS_LABEL: Record<RowStatus, string> = Object.freeze({
   error: 'ERROR (no value)',
 });
 
-export function renderSummary(rows: SummaryRow[]): string {
+const CHANGE_LABEL: Record<ChangeStatus, string> = Object.freeze({
+  baseline: 'baseline recorded',
+  unchanged: 'unchanged',
+  updated: 'updated',
+  unverified: 'not verified',
+});
+
+function updateDetails(row: SummaryRow): string[] {
+  const details: string[] = [];
+  if (row.changes.value === 'updated') {
+    details.push(`version/date ${row.changes.previousValue ?? '?'} -> ${row.value ?? '?'}`);
+  }
+  if (row.changes.description === 'updated') details.push('description updated');
+  if (row.changes.cover === 'updated') details.push('cover updated');
+  return details;
+}
+
+export function renderSummary(rows: SummaryRow[], baselineLabel = 'committed cache'): string {
   const display = (value: string | undefined): string => value || '-';
+  const updates = rows
+    .map((row) => ({ repo: row.repo, details: updateDetails(row) }))
+    .filter((update) => update.details.length > 0);
   const lines = [
     '## Project data',
     '',
-    '| Project | Source | Value | Status |',
-    '| --- | --- | --- | --- |',
+    `Compared with: ${baselineLabel}`,
+    '',
+    '### Updated projects',
+    '',
+    ...(updates.length > 0
+      ? updates.map((update) => `- ${update.repo}: ${update.details.join(', ')}`)
+      : ['No version/date, description, or cover changes']),
+    '',
+    '| Project | Source | Version/date | Fetch | Version/date change | Description change | Cover change |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const row of rows) {
-    lines.push(`| ${row.repo} | ${row.source} | ${display(row.value)} | ${row.status ? STATUS_LABEL[row.status] : '-'} |`);
+    lines.push(
+      `| ${row.repo} | ${row.source} | ${display(row.value)} | `
+      + `${row.status ? STATUS_LABEL[row.status] : '-'} | ${CHANGE_LABEL[row.changes.value]} | `
+      + `${CHANGE_LABEL[row.changes.description]} | ${CHANGE_LABEL[row.changes.cover]} |`
+    );
   }
   const counts: Record<RowStatus, number> = { fresh: 0, cache: 0, error: 0 };
   for (const row of rows) {
@@ -411,6 +514,34 @@ export function renderSummary(rows: SummaryRow[]): string {
   if (staticCount > 0) parts.push(`${staticCount} static`);
   lines.push('', `**${rows.length} project(s):** ${parts.length > 0 ? parts.join(', ') : 'none'}.`);
   return lines.join('\n');
+}
+
+async function loadProjectBaseline(cache: ProjectData): Promise<LoadedProjectBaseline> {
+  const cacheBaseline = projectChangeBaselineFromData(cache);
+  if (process.env.PROJECT_CHANGE_BASELINE !== DEPLOYED_BASELINE) {
+    return { data: cacheBaseline, label: 'committed cache' };
+  }
+
+  const manifestUrl = new URL(PROJECT_RELEASE_MANIFEST_PATH, siteUrl());
+  try {
+    const response = await fetch(manifestUrl, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const manifest = parseProjectReleaseManifest(await response.json());
+    return { data: manifest.projects, label: 'deployed release manifest' };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.log(
+      '::warning file=scripts/fetch-projects.ts::'
+      + `Could not load ${manifestUrl.href}: ${detail}; comparing with the committed cache`
+    );
+    return {
+      data: cacheBaseline,
+      label: 'committed cache (deployed manifest unavailable)',
+    };
+  }
 }
 
 function githubHeaders(): Record<string, string> {
@@ -587,7 +718,7 @@ async function writeProjectAsset(
   stageDirectory: string,
   repository: string,
   source: ProjectSource
-): Promise<{ width: number; height: number }> {
+): Promise<{ width: number; height: number; sha256: string }> {
   const dimensions = assertProjectCoverImage(source.cover, {
     declaredSize: source.declaredSize,
     contentType: source.contentType,
@@ -597,7 +728,16 @@ async function writeProjectAsset(
   const target = resolve(stageDirectory, relativePath);
   await fs.mkdir(dirname(target), { recursive: true });
   await fs.writeFile(target, source.cover, { flag: 'wx' });
-  return dimensions;
+  return { ...dimensions, sha256: projectCoverSha256(source.cover) };
+}
+
+async function writeProjectReleaseManifest(
+  stageDirectory: string,
+  data: ProjectData
+): Promise<void> {
+  const manifest = createProjectReleaseManifest(data);
+  const target = resolve(stageDirectory, PROJECT_RELEASE_MANIFEST_NAME);
+  await fs.writeFile(target, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
 }
 
 async function replaceGeneratedAssets(stageDirectory: string): Promise<void> {
@@ -607,6 +747,8 @@ async function replaceGeneratedAssets(stageDirectory: string): Promise<void> {
 
 async function fetchProjects(updateCache: boolean): Promise<void> {
   const { data: cache } = await loadProjectData(PROJECT_ROOT);
+  const snapshot = await readProjectDataFile(projectDataPaths(PROJECT_ROOT).snapshot) ?? {};
+  const baseline = await loadProjectBaseline(snapshot);
   const now = new Date();
   const errors: string[] = [];
   const rows: SummaryRow[] = [];
@@ -624,18 +766,17 @@ async function fetchProjects(updateCache: boolean): Promise<void> {
           : await fetchRemoteProject(repository, repositoryResult.profile.defaultBranch);
         let value: string;
         let fetchedAt: string;
+        let result: ResolveOutput | undefined;
         if (listing.meta.source === PROJECT_META_SOURCE.STATIC) {
           value = listing.meta.value;
           fetchedAt = cache[repository]?.fetchedAt ?? now.toISOString();
-          rows.push(staticRow({ repo: repository, value }));
         } else {
-          const result = resolveMeta({
+          result = resolveMeta({
             key: repository,
             fresh: await fetchMetadata(repository, listing.meta, repositoryResult.body),
             cache: cache[repository],
             now,
           });
-          rows.push(classifyRow({ repo: repository, source: listing.meta.source, result }));
           if (result.warning) {
             console.log(`::warning file=scripts/fetch-projects.ts::${result.warning}`);
           }
@@ -646,6 +787,16 @@ async function fetchProjects(updateCache: boolean): Promise<void> {
           fetchedAt = result.cacheUpdate?.fetchedAt ?? cache[repository]?.fetchedAt ?? now.toISOString();
         }
         const coverDimensions = await writeProjectAsset(stageDirectory, repository, source);
+        const changes = classifyProjectChanges({
+          baseline: baseline.data[repository],
+          value,
+          valueVerified: listing.meta.source === PROJECT_META_SOURCE.STATIC || Boolean(result?.cacheUpdate),
+          description: repositoryResult.profile.description,
+          coverSha256: coverDimensions.sha256,
+        });
+        rows.push(listing.meta.source === PROJECT_META_SOURCE.STATIC
+          ? staticRow({ repo: repository, value, changes })
+          : classifyRow({ repo: repository, source: listing.meta.source, result: result!, changes }));
         nextCache[repository] = {
           value,
           fetchedAt,
@@ -655,6 +806,7 @@ async function fetchProjects(updateCache: boolean): Promise<void> {
           url: repositoryResult.profile.url,
           coverWidth: coverDimensions.width,
           coverHeight: coverDimensions.height,
+          coverSha256: coverDimensions.sha256,
         };
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
@@ -662,10 +814,13 @@ async function fetchProjects(updateCache: boolean): Promise<void> {
       }
     }
     if (errors.length > 0) throw new Error(`project data checks failed\n${errors.join('\n')}`);
+    await writeProjectReleaseManifest(stageDirectory, nextCache);
     await replaceGeneratedAssets(stageDirectory);
     stageMoved = true;
     await writeProjectData(PROJECT_ROOT, nextCache, { updateSnapshot: updateCache });
-    await emitSummary(renderSummary(rows));
+    const summary = renderSummary(rows, baseline.label);
+    console.log(summary);
+    await emitSummary(summary);
   } finally {
     if (!stageMoved) await fs.rm(stageDirectory, { recursive: true, force: true });
   }

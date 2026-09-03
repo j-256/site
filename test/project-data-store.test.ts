@@ -25,6 +25,7 @@ function projectData(value: string): ProjectData {
       url: 'https://github.com/j-256/site',
       coverWidth: 1440,
       coverHeight: 1000,
+      coverSha256: 'a'.repeat(64),
     },
   };
 }
