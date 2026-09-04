@@ -917,7 +917,7 @@ report(
   'Escape restarts the reduced-motion game after inactivity',
   canvas.mode === 'force' &&
     canvas.state === 'active' &&
-    (await ballPositionChanges(reduced.page)),
+    (await ballPositionChanges(reduced.page, FOREGROUND_WAIT_MS)),
   `mode=${canvas.mode} state=${canvas.state}`
 );
 
