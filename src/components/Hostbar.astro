@@ -12,7 +12,13 @@ import { WORDMARK, TAGLINE } from '../data/site';
       <a class="page-shortcut" href="#links">[links]</a>
     </nav>
   </div>
-  <p class="tagline">{TAGLINE}</p>
+  <p class="hostbar-subline">
+    <span class="tagline">{TAGLINE}</span>
+    <span class="pong-controls" data-pong-controls>
+      <span><kbd>[esc]</kbd> dismiss/show</span>
+      <span><kbd>[P]</kbd> pause/resume</span>
+    </span>
+  </p>
 </header>
 
 <script is:inline>
@@ -98,7 +104,24 @@ import { WORDMARK, TAGLINE } from '../data/site';
   }
   .tagline {
     font-size: 0.9em;
-    margin: 0;
+  }
+  .hostbar-subline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1em;
+  }
+  .pong-controls {
+    display: none;
+    align-items: baseline;
+    gap: 1.25em;
+    color: var(--fg-dim);
+    font-size: 0.75em;
+    white-space: nowrap;
+  }
+  .pong-controls kbd {
+    color: var(--fg);
+    font: inherit;
   }
   :global(html[data-animation-mode='force']) .hostbar[data-stuck] .top-shortcut {
     animation: type-top-shortcut var(--top-shortcut-typing-duration) steps(5, end);
@@ -107,6 +130,9 @@ import { WORDMARK, TAGLINE } from '../data/site';
     :global(html[data-animation-mode='system']) .hostbar[data-stuck] .top-shortcut {
       animation: type-top-shortcut var(--top-shortcut-typing-duration) steps(5, end);
     }
+  }
+  @media (min-width: 900px) {
+    .pong-controls { display: flex; }
   }
   @keyframes type-top-shortcut {
     from { clip-path: inset(0 100% 0 0); }

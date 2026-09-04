@@ -173,6 +173,26 @@ const desktop = await createPage({
   reducedMotion: 'no-preference',
 });
 await desktop.page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
+const desktopControls = await desktop.page.evaluate(() => {
+  const controls = document.querySelector('[data-pong-controls]');
+  const tagline = document.querySelector('.tagline');
+  const controlsRect = controls.getBoundingClientRect();
+  const taglineRect = tagline.getBoundingClientRect();
+  return {
+    display: getComputedStyle(controls).display,
+    text: controls.textContent.replace(/\s+/g, ' ').trim(),
+    aligned: controlsRect.top >= taglineRect.top && controlsRect.bottom <= taglineRect.bottom,
+    separated: taglineRect.right < controlsRect.left,
+  };
+});
+report(
+  'desktop header shows the Pong toggle hints without crowding the tagline',
+  desktopControls.display === 'flex' &&
+    desktopControls.text === '[esc] dismiss/show [P] pause/resume' &&
+    desktopControls.aligned &&
+    desktopControls.separated,
+  `display=${desktopControls.display} text=${desktopControls.text}`
+);
 let canvas = await desktop.page.evaluate(readCanvas);
 report(
   'idle court fills the viewport without intercepting input',
@@ -987,6 +1007,14 @@ const mobile = await createPage({
   isMobile: true,
 });
 await mobile.page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
+const mobileControlsDisplay = await mobile.page.locator('[data-pong-controls]').evaluate(
+  controls => getComputedStyle(controls).display
+);
+report(
+  'mobile header keeps the Pong keyboard hints hidden',
+  mobileControlsDisplay === 'none',
+  `display=${mobileControlsDisplay}`
+);
 const cdp = await mobile.context.newCDPSession(mobile.page);
 await mobile.page.evaluate(() => {
   globalThis.__pongTouchProbe = [];
