@@ -46,6 +46,9 @@ async function sweep({ label, key, prime }) {
   const page = await context.newPage();
   await page.goto(SITE_URL, { waitUntil: 'networkidle' });
   await page.waitForTimeout(300);
+  await page.locator('[data-project-disclosure]').evaluate(details => {
+    details.open = true;
+  });
   const counts = await page.evaluate(
     ({ rowSelector, listSelectors }) => {
       const declared = listSelectors.map(selector => {

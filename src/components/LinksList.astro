@@ -34,7 +34,7 @@ const rows = links.map(l => ({
   .link-row { padding: 0.125em 0; }
   .row-link {
     display: block;
-    min-height: 44px;
+    min-height: var(--tap-target-size);
     text-decoration: none;
     white-space: pre-wrap;
     padding-left: 2ch;
@@ -59,6 +59,6 @@ const rows = links.map(l => ({
   .row-link:focus-visible {
     outline: 2px solid var(--fg-bright);
     outline-offset: 2px;
-    scroll-margin-top: 5em;
+    scroll-margin-top: var(--hostbar-sticky-height);
   }
 </style>

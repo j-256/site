@@ -64,6 +64,7 @@ await desktopPage.mouse.move(0, 0);
 await desktopPage.waitForTimeout(50);
 report('leaving the row hides preview', (await preview.getAttribute('data-visible')) === null);
 
+await desktopPage.locator('[data-project-disclosure] summary').click();
 await siteLink.locator('[data-project-preview-trigger]').hover();
 await previewImage.waitFor({ state: 'visible' });
 report('site entry shows its own preview', (await previewImage.getAttribute('src'))?.includes('/project-assets/j-256/site/cover.png') === true);
@@ -96,22 +97,34 @@ await desktop.close();
 const retryDesktop = await browser.newContext({ viewport: { width: 1200, height: 900 } });
 const retryPage = await retryDesktop.newPage();
 let roverRequestCount = 0;
+let allowRoverRequests = false;
 await retryPage.route('**/project-assets/j-256/rover-dumper/cover.png', async route => {
   roverRequestCount++;
-  if (roverRequestCount === 1) await route.abort();
-  else await route.continue();
+  if (!allowRoverRequests) {
+    await route.fulfill({ status: 503, contentType: 'text/plain', body: 'temporary failure' });
+  } else {
+    await route.continue();
+  }
 });
 await retryPage.goto(SITE_URL, { waitUntil: 'networkidle' });
+await retryPage.locator('[data-project-disclosure] summary').click();
 const retryTrigger = retryPage.locator('[data-preview-name="rover-dumper"] [data-project-preview-trigger]');
 const retryPreview = retryPage.locator('[data-project-preview]');
 const retryImage = retryPreview.locator('[data-preview-image]');
 await retryTrigger.hover();
 await retryPage.locator('[data-project-preview][data-error]').waitFor();
+const failedRequestCount = roverRequestCount;
 report('failed Rover request explains how to retry', (await retryPreview.locator('[data-preview-loading]').textContent())?.includes('leave and retry') === true);
 await retryPage.mouse.move(0, 0);
+allowRoverRequests = true;
 await retryTrigger.hover();
-await retryImage.waitFor({ state: 'visible' });
-report('Rover cover retries after a transient failure', roverRequestCount === 2 && (await retryImage.evaluate(element => element.naturalWidth)) > 0);
+await retryPage.locator('[data-project-preview][data-ready]').waitFor();
+const retryWidth = await retryImage.evaluate(element => element.naturalWidth);
+report(
+  'Rover cover retries after a transient failure',
+  failedRequestCount > 0 && roverRequestCount > failedRequestCount && retryWidth > 0,
+  `failedRequests=${failedRequestCount} totalRequests=${roverRequestCount} width=${retryWidth}`
+);
 await retryDesktop.close();
 
 const mobile = await browser.newContext({

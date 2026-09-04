@@ -16,6 +16,9 @@ for (const width of WIDTHS) {
   await page.setViewportSize({ width, height: 900 });
   await page.goto(SITE_URL, { waitUntil: 'networkidle' });
   await page.waitForTimeout(300);
+  await page.locator('[data-project-disclosure]').evaluate(details => {
+    details.open = true;
+  });
   const result = await page.evaluate(() => {
     const de = document.documentElement;
     const overflowing = [...document.querySelectorAll('.projects, .projects *')]

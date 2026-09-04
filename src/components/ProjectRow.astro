@@ -1,0 +1,100 @@
+---
+interface ProjectRowData {
+  prefix: string;
+  name: string;
+  description: string | null;
+  url: string;
+  cover: string;
+  coverWidth: number;
+  coverHeight: number;
+}
+
+interface Props {
+  row: ProjectRowData;
+}
+
+const { row } = Astro.props;
+---
+<li class="project-row">
+  <a
+    href={row.url}
+    class="row-link"
+    target="_blank"
+    rel="noopener noreferrer"
+    draggable="false"
+    data-project-preview-link
+    data-preview-name={row.name}
+    data-preview-src={row.cover}
+    data-preview-width={row.coverWidth}
+    data-preview-height={row.coverHeight}
+  ><span class="preview-trigger" data-project-preview-trigger><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span><span class="preview-progress" aria-hidden="true"></span></span><span class="annotation"># {row.description ?? 'View repository on GitHub'}</span></a>
+</li>
+
+<style>
+  .project-row { padding: 0.125em 0 0.5em; }
+  .row-link {
+    display: block;
+    min-height: var(--tap-target-size);
+    text-decoration: none;
+    white-space: pre-wrap;
+    scroll-margin-top: var(--row-scroll-margin-top, var(--hostbar-sticky-height));
+  }
+  .preview-trigger {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    padding-left: 2ch;
+    text-indent: -2ch;
+  }
+  .preview-progress {
+    position: absolute;
+    right: 0;
+    bottom: -0.15em;
+    left: 0;
+    height: 2px;
+    overflow: hidden;
+    visibility: hidden;
+    background: var(--fg-dim);
+    pointer-events: none;
+  }
+  .preview-progress::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background: var(--fg-bright);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  .row-link[data-preview-pending] .preview-progress,
+  .row-link[data-preview-active] .preview-progress { visibility: visible; }
+  .row-link[data-preview-pending] .preview-progress::after {
+    animation: preview-charge var(--preview-delay) linear forwards;
+  }
+  .row-link[data-preview-active] .preview-progress::after { transform: scaleX(1); }
+  @keyframes preview-charge {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  .prefix { white-space: pre; }
+  .name {
+    color: var(--fg-bright);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .annotation {
+    display: block;
+    max-width: var(--content-width);
+    padding-left: 2ch;
+    color: var(--fg-dim);
+    text-indent: 0;
+    user-select: text;
+  }
+  .row-link:hover .prefix,
+  .row-link:focus-visible .prefix { color: var(--fg-bright); }
+  .row-link:hover .annotation,
+  .row-link:focus-visible .annotation { color: var(--fg); }
+  .row-link:focus-visible {
+    outline: 2px solid var(--fg-bright);
+    outline-offset: 2px;
+  }
+</style>

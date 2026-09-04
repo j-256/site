@@ -25,6 +25,8 @@
   --content-width: 80ch;
   --pad-mobile: 1rem;
   --pad-desktop: 2rem;
+  --tap-target-size: 44px;
+  --hostbar-sticky-height: calc(var(--tap-target-size) + 1.85rem + 1px);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -144,6 +146,8 @@ html[data-animation-mode='disable'] .pong-paddle-emphasis {
   margin: 0 auto;
   padding: var(--pad-mobile);
 }
+
+#top:focus { outline: none; }
 
 @media (min-width: 600px) {
   .page { padding: var(--pad-desktop); }

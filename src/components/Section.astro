@@ -1,16 +1,21 @@
 ---
 interface Props {
   command: string;
+  id?: string;
 }
-const { command } = Astro.props;
+const { command, id } = Astro.props;
 ---
-<section class="section">
+<section class="section" id={id} tabindex={id ? -1 : undefined}>
   <p class="divider"><span class="prompt">$</span> <span class="cmd">{command}</span></p>
   <div class="body"><slot /></div>
 </section>
 
 <style>
-  .section { margin-bottom: 2em; }
+  .section {
+    margin-bottom: 2em;
+    scroll-margin-top: calc(var(--hostbar-sticky-height) + 0.5rem);
+  }
+  .section:focus { outline: none; }
   /* Section dividers are scaffolding, not content. Dim the whole line
      (including $) and shrink it so it reads as a quiet label rather than
      drawing the eye to terminal-isms */

@@ -1,53 +1,63 @@
 ---
-import { projectListings } from '../data/projects';
+import {
+  disclosedProjectListings,
+  initialProjectListings,
+  type ProjectListing,
+} from '../data/projects';
 import { formatLsRow, META_WIDTH } from '../lib/format';
 import { projectCoverAssetPath } from '../lib/project-assets';
 import { loadProjectData } from '../lib/project-data-store';
 import { projectPermissions } from '../lib/project-listing';
+import ProjectRow from './ProjectRow.astro';
 
 const { data: projectData } = await loadProjectData(process.cwd());
 const PREVIEW_DELAY_MS = 500;
-const rows = projectListings.map((listing) => {
-  const data = projectData[listing.repository];
-  if (!data) throw new Error(`No project data for ${listing.repository}; run npm run fetch-projects`);
-  if (data.value.length > META_WIDTH) {
-    console.warn(`meta "${data.value}" for ${listing.repository} exceeds ${META_WIDTH} chars and will be clipped`);
-  }
-  return {
-    ...data,
-    prefix: formatLsRow({
-      perms: projectPermissions(listing.artifact),
-      owner: data.owner,
-      meta: data.value,
-    }),
-    cover: `/${projectCoverAssetPath(listing.repository)}`,
-  };
-});
+
+function projectRows(listings: readonly ProjectListing[]) {
+  return listings.map((listing) => {
+    const data = projectData[listing.repository];
+    if (!data) throw new Error(`No project data for ${listing.repository}; run npm run fetch-projects`);
+    if (data.value.length > META_WIDTH) {
+      console.warn(`meta "${data.value}" for ${listing.repository} exceeds ${META_WIDTH} chars and will be clipped`);
+    }
+    return {
+      ...data,
+      prefix: formatLsRow({
+        perms: projectPermissions(listing.artifact),
+        owner: data.owner,
+        meta: data.value,
+      }),
+      cover: `/${projectCoverAssetPath(listing.repository)}`,
+    };
+  });
+}
+
+const initialRows = projectRows(initialProjectListings);
+const disclosedRows = projectRows(disclosedProjectListings);
+const rowCount = initialRows.length + disclosedRows.length;
 ---
-<ul
+<div
   class="projects"
-  aria-label="Projects"
-  data-row-count={rows.length}
+  data-row-count={rowCount}
+  data-initial-row-count={initialRows.length}
+  data-disclosed-row-count={disclosedRows.length}
   data-preview-delay={PREVIEW_DELAY_MS}
   style={`--preview-delay: ${PREVIEW_DELAY_MS}ms`}
 >
-  {rows.map((row) => (
-    <li class="project-row">
-      <a
-        href={row.url}
-        class="row-link"
-        target="_blank"
-        rel="noopener noreferrer"
-        draggable="false"
-        data-project-preview-link
-        data-preview-name={row.name}
-        data-preview-src={row.cover}
-        data-preview-width={row.coverWidth}
-        data-preview-height={row.coverHeight}
-      ><span class="preview-trigger" data-project-preview-trigger><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span><span class="preview-progress" aria-hidden="true"></span></span><span class="annotation"># {row.description ?? 'View repository on GitHub'}</span></a>
-    </li>
-  ))}
-</ul>
+  <ul class="project-list initial-projects" aria-label="Projects">
+    {initialRows.map((row) => <ProjectRow row={row} />)}
+  </ul>
+
+  <details class="project-disclosure" data-project-disclosure>
+    <summary class="disclosure-summary" data-project-disclosure-summary>
+      <span class="disclosure-closed">[+] show {disclosedRows.length} more projects</span>
+      <span class="disclosure-open">[-] hide {disclosedRows.length} more projects</span>
+    </summary>
+    <ul class="project-list disclosed-projects" aria-label="Additional projects">
+      {disclosedRows.map((row) => <ProjectRow row={row} />)}
+    </ul>
+  </details>
+</div>
 
 <div class="project-preview" data-project-preview aria-hidden="true">
   <figure class="preview-window">
@@ -61,6 +71,21 @@ const rows = projectListings.map((listing) => {
 </div>
 
 <script is:inline>
+  var projectDisclosure = document.querySelector('[data-project-disclosure]');
+  var disclosureSummary = document.querySelector('[data-project-disclosure-summary]');
+  if (projectDisclosure && disclosureSummary) {
+    projectDisclosure.addEventListener('toggle', function () {
+      if (projectDisclosure.open) return;
+      window.requestAnimationFrame(function () {
+        var summaryRect = disclosureSummary.getBoundingClientRect();
+        var hostbar = document.querySelector('.hostbar');
+        var hostbarBottom = hostbar ? hostbar.getBoundingClientRect().bottom : 0;
+        var outsideViewport = summaryRect.top < hostbarBottom || summaryRect.bottom > window.innerHeight;
+        if (outsideViewport) disclosureSummary.scrollIntoView({ block: 'start' });
+      });
+    });
+  }
+
   var previewQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
   var previewLayer = document.querySelector('[data-project-preview]');
   var previewImage = previewLayer && previewLayer.querySelector('[data-preview-image]');
@@ -217,73 +242,39 @@ const rows = projectListings.map((listing) => {
 </script>
 
 <style>
-  .projects { list-style: none; padding: 0; }
-  .project-row { padding: 0.125em 0 0.5em; }
-  .row-link {
-    display: block;
-    min-height: 44px;
-    text-decoration: none;
-    white-space: pre-wrap;
+  .project-list { list-style: none; padding: 0; }
+  .project-disclosure {
+    --row-scroll-margin-top: calc(
+      var(--hostbar-sticky-height) + var(--tap-target-size) + 0.5rem
+    );
   }
-  .preview-trigger {
-    position: relative;
-    display: inline-block;
-    max-width: 100%;
-    padding-left: 2ch;
-    text-indent: -2ch;
-  }
-  .preview-progress {
-    position: absolute;
-    right: 0;
-    bottom: -0.15em;
-    left: 0;
-    height: 2px;
-    overflow: hidden;
-    visibility: hidden;
-    background: var(--fg-dim);
-    pointer-events: none;
-  }
-  .preview-progress::after {
-    position: absolute;
-    inset: 0;
-    content: '';
-    background: var(--fg-bright);
-    transform: scaleX(0);
-    transform-origin: left;
-  }
-  .row-link[data-preview-pending] .preview-progress,
-  .row-link[data-preview-active] .preview-progress { visibility: visible; }
-  .row-link[data-preview-pending] .preview-progress::after {
-    animation: preview-charge var(--preview-delay) linear forwards;
-  }
-  .row-link[data-preview-active] .preview-progress::after { transform: scaleX(1); }
-  @keyframes preview-charge {
-    from { transform: scaleX(0); }
-    to { transform: scaleX(1); }
-  }
-  .prefix { white-space: pre; }
-  .name {
-    color: var(--fg-bright);
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .annotation {
-    display: block;
-    max-width: var(--content-width);
-    padding-left: 2ch;
+  .disclosure-summary {
+    min-height: var(--tap-target-size);
+    display: flex;
+    align-items: center;
     color: var(--fg-dim);
-    text-indent: 0;
-    user-select: text;
+    cursor: pointer;
+    list-style: none;
+    scroll-margin-top: calc(var(--hostbar-sticky-height) + 0.5rem);
   }
-  .row-link:hover .prefix,
-  .row-link:focus-visible .prefix { color: var(--fg-bright); }
-  .row-link:hover .annotation,
-  .row-link:focus-visible .annotation { color: var(--fg); }
-  .row-link:focus-visible {
+  .disclosure-summary::-webkit-details-marker { display: none; }
+  .disclosure-summary:hover,
+  .disclosure-summary:focus-visible { color: var(--fg-bright); }
+  .disclosure-summary:focus-visible {
     outline: 2px solid var(--fg-bright);
     outline-offset: 2px;
-    scroll-margin-top: 5em;
   }
+  .project-disclosure[open] > .disclosure-summary {
+    position: sticky;
+    z-index: 9;
+    top: var(--hostbar-sticky-height);
+    border-bottom: 1px solid var(--fg-dim);
+    background: var(--bg);
+  }
+  .disclosure-open { display: none; }
+  .project-disclosure[open] .disclosure-closed { display: none; }
+  .project-disclosure[open] .disclosure-open { display: inline; }
+  .disclosed-projects { padding-top: 0.5em; }
   .project-preview { display: none; }
   @media (hover: hover) and (pointer: fine) {
     .project-preview {
