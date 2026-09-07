@@ -60,6 +60,16 @@ describe('project release manifest', () => {
     })).toThrow(/digest/);
   });
 
+  it('rejects unsafe project property names', () => {
+    const projects = Object.fromEntries([
+      ['__proto__', { value: 'x', description: null, coverSha256: COVER_SHA256 }],
+    ]);
+    expect(() => parseProjectReleaseManifest({
+      version: PROJECT_RELEASE_MANIFEST_VERSION,
+      projects,
+    })).toThrow(/invalid project repository/);
+  });
+
   it('updates one cover digest without changing other release data', () => {
     const manifest = createProjectReleaseManifest(projectData());
     const updated = updateProjectReleaseCover(manifest, 'j-256/site', new Uint8Array([5, 6]));
