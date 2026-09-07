@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { ProjectData } from './project-data-store';
+import { assertProjectRepository } from './project-assets';
 
 export const PROJECT_RELEASE_MANIFEST_VERSION = 1;
 
@@ -66,23 +67,25 @@ export function parseProjectReleaseManifest(value: unknown): ProjectReleaseManif
     throw new Error('project release manifest is missing its projects object');
   }
 
-  const projects: Record<string, ProjectReleaseEntry> = {};
-  for (const [repository, entry] of Object.entries(value.projects)) {
-    if (!isRecord(entry) || typeof entry.value !== 'string' || entry.value.trim() === '') {
-      throw new Error(`project release manifest has an invalid value for ${repository}`);
-    }
-    if (entry.description !== null && typeof entry.description !== 'string') {
-      throw new Error(`project release manifest has an invalid description for ${repository}`);
-    }
-    if (typeof entry.coverSha256 !== 'string' || !SHA256_PATTERN.test(entry.coverSha256)) {
-      throw new Error(`project release manifest has an invalid cover digest for ${repository}`);
-    }
-    projects[repository] = {
-      value: entry.value,
-      description: entry.description,
-      coverSha256: entry.coverSha256,
-    };
-  }
+  const projects = Object.fromEntries(
+    Object.entries(value.projects).map(([repository, entry]) => {
+      assertProjectRepository(repository);
+      if (!isRecord(entry) || typeof entry.value !== 'string' || entry.value.trim() === '') {
+        throw new Error(`project release manifest has an invalid value for ${repository}`);
+      }
+      if (entry.description !== null && typeof entry.description !== 'string') {
+        throw new Error(`project release manifest has an invalid description for ${repository}`);
+      }
+      if (typeof entry.coverSha256 !== 'string' || !SHA256_PATTERN.test(entry.coverSha256)) {
+        throw new Error(`project release manifest has an invalid cover digest for ${repository}`);
+      }
+      return [repository, {
+        value: entry.value,
+        description: entry.description,
+        coverSha256: entry.coverSha256,
+      }] as const;
+    })
+  );
 
   return { version: PROJECT_RELEASE_MANIFEST_VERSION, projects };
 }
