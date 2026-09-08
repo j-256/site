@@ -286,7 +286,7 @@ export function initPongBackground(
     canvas.dataset.pongBall = gameIsVisible() ? BALL_PRESENCE.SPAWNED : BALL_PRESENCE.DORMANT;
     canvas.dataset.pongBrightness = String(brightnessStage);
     canvas.dataset.pongPaddles = gameIsLit() ? PADDLE_TONE.BRIGHT : PADDLE_TONE.DIM;
-    controls.hidden = !active;
+    controls.hidden = !gameIsLit() || motionIsReduced();
   }
 
   function syncScore(): void {

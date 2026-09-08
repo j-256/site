@@ -247,11 +247,9 @@ report(
     !(await canvasChanges(desktop.page))
 );
 report(
-  'desktop header reveals the Pong toggle hints after activation without crowding the tagline',
-  desktopControls.display === 'flex' &&
-    desktopControls.text === '[esc] dismiss/show [P] pause/resume' &&
-    desktopControls.aligned &&
-    desktopControls.separated,
+  'desktop header keeps the Pong toggle hints hidden before the first paddle return',
+  desktopControls.display === 'none' &&
+    desktopControls.text === '[esc] dismiss/show [P] pause/resume',
   `display=${desktopControls.display} text=${desktopControls.text}`
 );
 
@@ -439,6 +437,15 @@ report(
     foreground.brightness === '1' &&
     foreground.paddleTone === 'bright' &&
     foreground.scoreText === 'pong 0:0'
+);
+desktopControls = await desktop.page.evaluate(readControls);
+report(
+  'first paddle return reveals the desktop toggle hints without crowding the tagline',
+  desktopControls.display === 'flex' &&
+    desktopControls.text === '[esc] dismiss/show [P] pause/resume' &&
+    desktopControls.aligned &&
+    desktopControls.separated,
+  `display=${desktopControls.display} text=${desktopControls.text}`
 );
 report(
   'first-stage paddles exactly match the unlocked ball',
@@ -629,6 +636,7 @@ await desktop.page.waitForFunction(
 );
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
+desktopControls = await desktop.page.evaluate(readControls);
 report(
   'inactivity returns Pong to the dormant court',
   canvas.state === 'sleeping' &&
@@ -641,6 +649,7 @@ report(
     canvas.leftPaddleOpacity === '0' &&
     canvas.rightPaddleOpacity === '0' &&
     canvas.scoreText === '' &&
+    desktopControls.display === 'none' &&
     canvas.opacity === '0.035' &&
     !(await canvasChanges(desktop.page)),
   `state=${canvas.state} ball=${canvas.ballPresence} paddles=${canvas.paddleTone} score=${canvas.scoreText}`
@@ -654,6 +663,7 @@ await desktop.page.waitForFunction(
 );
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
+desktopControls = await desktop.page.evaluate(readControls);
 report(
   'the next mouse movement restores the preserved game immediately',
   canvas.state === 'paused' &&
@@ -663,6 +673,7 @@ report(
     canvas.reveal === 'unlocked' &&
     canvas.score === scoreBeforeSleep &&
     canvas.scoreText === `pong ${scoreBeforeSleep}` &&
+    desktopControls.display === 'flex' &&
     canvas.opacity === '0.12' &&
     canvas.ballOpacity === '0.8' &&
     canvas.leftPaddleOpacity === '0.8' &&
@@ -759,6 +770,7 @@ report('P resumes the game', canvas.state === 'active');
 await desktop.page.keyboard.press('Escape');
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
+desktopControls = await desktop.page.evaluate(readControls);
 let dismissedPaddles = await desktop.page.evaluate(readPaddles);
 report(
   'Escape dismisses active Pong back to the dormant court',
@@ -773,6 +785,7 @@ report(
     canvas.leftPaddleOpacity === '0' &&
     canvas.rightPaddleOpacity === '0' &&
     canvas.scoreText === '' &&
+    desktopControls.display === 'none' &&
     canvas.opacity === '0.035' &&
     !(await canvasChanges(desktop.page)),
   `state=${canvas.state} ball=${canvas.ballPresence}/${canvas.ballOpacity} paddles=${canvas.paddleTone}/${canvas.leftPaddleOpacity}/${canvas.rightPaddleOpacity} score=${canvas.score}/${canvas.scoreText}`
@@ -799,6 +812,7 @@ await desktop.page.keyboard.press('Escape');
 await desktop.page.waitForFunction(() => document.querySelector('[data-pong-background]').dataset.pongState === 'active');
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
+desktopControls = await desktop.page.evaluate(readControls);
 paddles = await desktop.page.evaluate(readPaddles);
 report(
   'a second Escape restores the preserved running game',
@@ -809,6 +823,7 @@ report(
     canvas.reveal === 'unlocked' &&
     canvas.score !== '0:0' &&
     canvas.scoreText === `pong ${canvas.score}` &&
+    desktopControls.display === 'flex' &&
     canvas.leftPaddleOpacity === '0.8' &&
     canvas.rightPaddleOpacity === '0.8' &&
     canvas.opacity === '0.12' &&
