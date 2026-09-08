@@ -128,7 +128,8 @@ export function initPongBackground(
   canvas: HTMLCanvasElement,
   ballEmphasis: HTMLElement,
   paddleEmphasis: PaddleEmphasisElements,
-  scoreTerminal: HTMLElement
+  scoreTerminal: HTMLElement,
+  controls: HTMLElement
 ): () => void {
   const drawingContext = canvas.getContext('2d');
   if (!drawingContext) return () => {};
@@ -285,6 +286,7 @@ export function initPongBackground(
     canvas.dataset.pongBall = gameIsVisible() ? BALL_PRESENCE.SPAWNED : BALL_PRESENCE.DORMANT;
     canvas.dataset.pongBrightness = String(brightnessStage);
     canvas.dataset.pongPaddles = gameIsLit() ? PADDLE_TONE.BRIGHT : PADDLE_TONE.DIM;
+    controls.hidden = !active;
   }
 
   function syncScore(): void {
@@ -651,7 +653,8 @@ export function initPongBackground(
       if (!event.repeat) togglePause();
       return;
     }
-    if (!active || sleeping || !GAMEPLAY_CODES.has(event.code)) return;
+    if (!active || !GAMEPLAY_CODES.has(event.code)) return;
+    if (sleeping) wakeSleepingGame(false);
     pressedCodes.add(event.code);
     noteGameActivity();
     if (ARROW_CODES.has(event.code)) event.preventDefault();

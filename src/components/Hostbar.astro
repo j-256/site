@@ -14,7 +14,7 @@ import { WORDMARK, TAGLINE } from '../data/site';
   </div>
   <p class="hostbar-subline">
     <span class="tagline">{TAGLINE}</span>
-    <span class="pong-controls" data-pong-controls>
+    <span class="pong-controls" data-pong-controls hidden>
       <span><kbd>[esc]</kbd> dismiss/show</span>
       <span><kbd>[P]</kbd> pause/resume</span>
     </span>
@@ -119,6 +119,7 @@ import { WORDMARK, TAGLINE } from '../data/site';
     font-size: 0.75em;
     white-space: nowrap;
   }
+  .pong-controls[hidden] { display: none; }
   .pong-controls kbd {
     color: var(--fg);
     font: inherit;

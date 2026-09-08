@@ -34,16 +34,18 @@
   const leftPaddleEmphasis = document.querySelector('[data-pong-paddle-emphasis="left"]');
   const rightPaddleEmphasis = document.querySelector('[data-pong-paddle-emphasis="right"]');
   const scoreTerminal = document.querySelector('[data-pong-score-terminal]');
+  const controls = document.querySelector('[data-pong-controls]');
   if (
     canvas instanceof HTMLCanvasElement &&
     ballEmphasis instanceof HTMLElement &&
     leftPaddleEmphasis instanceof HTMLElement &&
     rightPaddleEmphasis instanceof HTMLElement &&
-    scoreTerminal instanceof HTMLElement
+    scoreTerminal instanceof HTMLElement &&
+    controls instanceof HTMLElement
   ) {
     initPongBackground(canvas, ballEmphasis, {
       left: leftPaddleEmphasis,
       right: rightPaddleEmphasis,
-    }, scoreTerminal);
+    }, scoreTerminal, controls);
   }
 </script>

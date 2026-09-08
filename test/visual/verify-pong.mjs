@@ -116,6 +116,19 @@ function readPaddles() {
   };
 }
 
+function readControls() {
+  const controls = document.querySelector('[data-pong-controls]');
+  const tagline = document.querySelector('.tagline');
+  const controlsRect = controls.getBoundingClientRect();
+  const taglineRect = tagline.getBoundingClientRect();
+  return {
+    display: getComputedStyle(controls).display,
+    text: controls.textContent.replace(/\s+/g, ' ').trim(),
+    aligned: controlsRect.top >= taglineRect.top && controlsRect.bottom <= taglineRect.bottom,
+    separated: taglineRect.right < controlsRect.left,
+  };
+}
+
 async function canvasChanges(page, waitMs = MOTION_SAMPLE_MS) {
   return page.evaluate(async delay => {
     const canvas = document.querySelector('[data-pong-background]');
@@ -173,24 +186,11 @@ const desktop = await createPage({
   reducedMotion: 'no-preference',
 });
 await desktop.page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
-const desktopControls = await desktop.page.evaluate(() => {
-  const controls = document.querySelector('[data-pong-controls]');
-  const tagline = document.querySelector('.tagline');
-  const controlsRect = controls.getBoundingClientRect();
-  const taglineRect = tagline.getBoundingClientRect();
-  return {
-    display: getComputedStyle(controls).display,
-    text: controls.textContent.replace(/\s+/g, ' ').trim(),
-    aligned: controlsRect.top >= taglineRect.top && controlsRect.bottom <= taglineRect.bottom,
-    separated: taglineRect.right < controlsRect.left,
-  };
-});
+let desktopControls = await desktop.page.evaluate(readControls);
 report(
-  'desktop header shows the Pong toggle hints without crowding the tagline',
-  desktopControls.display === 'flex' &&
-    desktopControls.text === '[esc] dismiss/show [P] pause/resume' &&
-    desktopControls.aligned &&
-    desktopControls.separated,
+  'desktop header keeps the Pong toggle hints hidden before activation',
+  desktopControls.display === 'none' &&
+    desktopControls.text === '[esc] dismiss/show [P] pause/resume',
   `display=${desktopControls.display} text=${desktopControls.text}`
 );
 let canvas = await desktop.page.evaluate(readCanvas);
@@ -237,6 +237,7 @@ report(
 await desktop.page.keyboard.press('p');
 await desktop.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await desktop.page.evaluate(readCanvas);
+desktopControls = await desktop.page.evaluate(readControls);
 report(
   'P skips discovery and reveals Pong paused',
   canvas.state === 'paused' &&
@@ -244,6 +245,14 @@ report(
     canvas.paddleTone === 'dim' &&
     canvas.scoreText === '' &&
     !(await canvasChanges(desktop.page))
+);
+report(
+  'desktop header reveals the Pong toggle hints after activation without crowding the tagline',
+  desktopControls.display === 'flex' &&
+    desktopControls.text === '[esc] dismiss/show [P] pause/resume' &&
+    desktopControls.aligned &&
+    desktopControls.separated,
+  `display=${desktopControls.display} text=${desktopControls.text}`
 );
 
 await desktop.page.reload({ waitUntil: 'domcontentloaded' });
@@ -881,6 +890,7 @@ const reduced = await createPage({
 });
 await reduced.page.goto(SITE_URL, { waitUntil: 'domcontentloaded' });
 canvas = await reduced.page.evaluate(readCanvas);
+desktopControls = await reduced.page.evaluate(readControls);
 report(
   'system reduced motion keeps boot and Pong static',
     canvas.mode === 'system' &&
@@ -889,8 +899,9 @@ report(
     canvas.paddleTone === 'dim' &&
     canvas.scoreText === '' &&
     canvas.bootTyping === false &&
+    desktopControls.display === 'none' &&
     canvas.opacity === '0.025',
-  `mode=${canvas.mode} state=${canvas.state} typing=${canvas.bootTyping}`
+  `mode=${canvas.mode} state=${canvas.state} typing=${canvas.bootTyping} controls=${desktopControls.display}`
 );
 await reduced.page.mouse.move(80, 220);
 await reduced.page.mouse.move(80, 320);
@@ -930,15 +941,20 @@ await reduced.page.waitForFunction(
   null,
   { timeout: INACTIVITY_HIDE_MS + 2000 }
 );
-await reduced.page.keyboard.press('Escape');
+const sleepingRight = (await reduced.page.evaluate(readPaddles)).right.center;
+await reduced.page.keyboard.down('ArrowDown');
+await reduced.page.waitForTimeout(KEY_HOLD_MS);
+await reduced.page.keyboard.up('ArrowDown');
 await reduced.page.waitForTimeout(ACTIVE_STYLE_SETTLE_MS);
 canvas = await reduced.page.evaluate(readCanvas);
+const awakenedRight = (await reduced.page.evaluate(readPaddles)).right.center;
 report(
-  'Escape restarts the reduced-motion game after inactivity',
+  'a paddle key restarts the reduced-motion game after inactivity',
   canvas.mode === 'force' &&
     canvas.state === 'active' &&
+    awakenedRight - sleepingRight >= MIN_KEYBOARD_TRAVEL &&
     (await ballPositionChanges(reduced.page, FOREGROUND_WAIT_MS)),
-  `mode=${canvas.mode} state=${canvas.state}`
+  `mode=${canvas.mode} state=${canvas.state} right=${sleepingRight}->${awakenedRight}`
 );
 
 for (const query of ['?animate=1', '?animate=true', '?animate=anything']) {
