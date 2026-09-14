@@ -56,6 +56,9 @@ const rowCount = initialRows.length + disclosedRows.length;
     <ul class="project-list disclosed-projects" aria-label="Additional projects">
       {disclosedRows.map((row) => <ProjectRow row={row} />)}
     </ul>
+    <p class="projects-more">
+      # Selected projects. <a href="https://github.com/j-256?tab=repositories">More tools and experiments on GitHub.</a>
+    </p>
   </details>
 </div>
 
@@ -275,6 +278,7 @@ const rowCount = initialRows.length + disclosedRows.length;
   .project-disclosure[open] .disclosure-closed { display: none; }
   .project-disclosure[open] .disclosure-open { display: inline; }
   .disclosed-projects { padding-top: 0.5em; }
+  .projects-more { margin-top: 1em; color: var(--fg-dim); }
   .project-preview { display: none; }
   @media (hover: hover) and (pointer: fine) {
     .project-preview {
