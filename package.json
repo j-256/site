@@ -32,7 +32,7 @@
   "dependencies": {
     "@astrojs/check": "^0.9.10",
     "astro": "^7.3.2",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
@@ -41,7 +41,7 @@
     "playwright": "^1.63.0",
     "tsx": "^4.23.13",
     "vitest": "^5.0.0",
-    "wrangler": "4.131.0"
+    "wrangler": "4.131.2"
   },
   "overrides": {
     "sharp": "0.35.4"
