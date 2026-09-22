@@ -3,7 +3,7 @@ import {
   ANIMATION_MODE_ATTRIBUTE,
   motionShouldReduce,
 } from '../lib/animation-preference';
-import { advanceRipples, createRippleField, disturbRipple, type RippleField } from '../lib/ripple';
+import { advanceRipples, createRippleField, disturbBallRipple, disturbRipple } from '../lib/ripple';
 import { subscribeToPongRipples, type PongRippleFrame, type RipplePoint } from './pong-ripples';
 
 const FRAME_MS = 1000 / 60;
@@ -11,30 +11,21 @@ const MAX_FRAME_STEPS = 3;
 const TRAIL_SPACING = 10;
 const MAX_TRAIL_STEPS = 32;
 const MIN_TRAVEL = 3;
-const POINTER_DAMPING = 0.965;
-const POINTER_SETTLE_MS = 2500;
-const POINTER_FADE_MS = 1200;
-const BALL_SETTLE_MS = 5000;
-const BALL_FADE_MS = 1500;
+const RIPPLE_DAMPING = 0.965;
+const SETTLE_MS = 2500;
+const FADE_MS = 1200;
 const RIPPLE_GRAY = 145;
 const MAX_ALPHA = 60;
 const LIGHT_STRENGTH = 48;
 const HANDOFF_MS = 1000;
-const BALL_WAKE_STRENGTH = 0.45;
-const BALL_WAKE_SPACING = 32;
-const BALL_CELL_SIZE = 6;
-const BALL_DROP_RADIUS = 2.5;
-const BALL_WAVE_SPEED_RATIO = 1.35;
-const BALL_IMPACT_STRENGTH = 0.55;
+const BALL_IMPACT_STRENGTH = 1.1;
 const MAX_SURFACE_PIXEL_RATIO = 2;
 const RIPPLE_SOURCE = Object.freeze({ POINTER: 'pointer', PONG: 'pong' } as const);
+type RippleSource = typeof RIPPLE_SOURCE[keyof typeof RIPPLE_SOURCE];
 
 export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
   const context = canvas.getContext('2d');
   if (!context) return () => {};
-  const ballCanvas = document.createElement('canvas');
-  const ballContext = ballCanvas.getContext('2d');
-  if (!ballContext) return () => {};
   const surfaces = Array.from(document.querySelectorAll<HTMLCanvasElement>('[data-ripple-surface]')).flatMap(surface => {
     const surfaceContext = surface.getContext('2d');
     return surfaceContext ? [{ canvas: surface, context: surfaceContext }] : [];
@@ -45,17 +36,11 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
   let viewportWidth = window.innerWidth;
   let viewportHeight = window.innerHeight;
   let field = createRippleField(viewportWidth, viewportHeight);
-  let ballField = createRippleField(viewportWidth, viewportHeight, BALL_CELL_SIZE);
   let pixels: ImageData;
-  let ballPixels: ImageData;
   let mouse: RipplePoint | undefined;
   let ball: RipplePoint | undefined;
   let ballTravel = 0;
-  let ballStepsPerFrame = 1;
-  let ballStepsPending = 0;
-  let lastPointerInput = Number.NEGATIVE_INFINITY;
-  let lastBallInput = Number.NEGATIVE_INFINITY;
-  let ballRipplesActive = false;
+  let lastInput = Number.NEGATIVE_INFINITY;
   const touches = new Map<number, RipplePoint>();
   let handoffFrom = 0;
   let handoffTarget = 0;
@@ -71,15 +56,10 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     mouse = undefined;
     ball = undefined;
     ballTravel = 0;
-    ballStepsPending = 0;
-    lastPointerInput = Number.NEGATIVE_INFINITY;
-    lastBallInput = Number.NEGATIVE_INFINITY;
-    ballRipplesActive = false;
+    lastInput = Number.NEGATIVE_INFINITY;
     touches.clear();
     field.current.fill(0);
     field.previous.fill(0);
-    ballField.current.fill(0);
-    ballField.previous.fill(0);
     context!.clearRect(0, 0, canvas.width, canvas.height);
     for (const surface of surfaces) {
       surface.context.clearRect(0, 0, surface.canvas.width, surface.canvas.height);
@@ -91,43 +71,28 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     viewportWidth = window.innerWidth;
     viewportHeight = window.innerHeight;
     field = createRippleField(viewportWidth, viewportHeight);
-    ballField = createRippleField(viewportWidth, viewportHeight, BALL_CELL_SIZE);
     canvas.width = field.width;
     canvas.height = field.height;
     pixels = context!.createImageData(field.width, field.height);
-    ballCanvas.width = ballField.width;
-    ballCanvas.height = ballField.height;
-    ballPixels = ballContext!.createImageData(ballField.width, ballField.height);
-    for (const image of [pixels, ballPixels]) {
-      for (let index = 0; index < image.data.length; index += 4) {
-        image.data[index] = RIPPLE_GRAY;
-        image.data[index + 1] = RIPPLE_GRAY;
-        image.data[index + 2] = RIPPLE_GRAY;
-      }
+    for (let index = 0; index < pixels.data.length; index += 4) {
+      pixels.data[index] = RIPPLE_GRAY;
+      pixels.data[index + 1] = RIPPLE_GRAY;
+      pixels.data[index + 2] = RIPPLE_GRAY;
     }
   }
 
-  function shade(surface: RippleField, image: ImageData, fade: number): void {
-    const { current, width, height } = surface;
+  function draw(fade: number): void {
+    const { current, width, height } = field;
     for (let row = 1; row < height - 1; row++) {
       for (let column = 1; column < width - 1; column++) {
         const index = row * width + column;
         const slope = current[index - 1] - current[index + 1]
           + current[index - width] - current[index + width];
         const intensity = Math.abs(slope) * LIGHT_STRENGTH;
-        image.data[index * 4 + 3] = MAX_ALPHA * intensity / (MAX_ALPHA + intensity) * fade;
+        pixels.data[index * 4 + 3] = MAX_ALPHA * intensity / (MAX_ALPHA + intensity) * fade;
       }
     }
-  }
-
-  function draw(fade: number, ballFade: number): void {
-    shade(field, pixels, fade);
     context!.putImageData(pixels, 0, 0);
-    if (ballRipplesActive) {
-      shade(ballField, ballPixels, ballFade);
-      ballContext!.putImageData(ballPixels, 0, 0);
-      context!.drawImage(ballCanvas, 0, 0, canvas.width, canvas.height);
-    }
     drawSurfaces();
   }
 
@@ -149,42 +114,19 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
 
   function frame(now: number): void {
     animationFrame = 0;
-    const pointerIdleTime = now - lastPointerInput;
-    const ballIdleTime = now - lastBallInput;
-    if (document.hidden || motionShouldReduce(reducedMotion)
-      || (pointerIdleTime >= POINTER_SETTLE_MS && ballIdleTime >= BALL_SETTLE_MS)) {
+    const idleTime = now - lastInput;
+    if (document.hidden || motionShouldReduce(reducedMotion) || idleTime >= SETTLE_MS) {
       reset();
       return;
     }
     accumulatedTime += Math.min(now - lastFrame, FRAME_MS * MAX_FRAME_STEPS);
     lastFrame = now;
-    if (pointerIdleTime >= POINTER_SETTLE_MS && Number.isFinite(lastPointerInput)) {
-      field.current.fill(0);
-      field.previous.fill(0);
-      lastPointerInput = Number.NEGATIVE_INFINITY;
-    }
-    if (ballRipplesActive && ballIdleTime >= BALL_SETTLE_MS) {
-      ballField.current.fill(0);
-      ballField.previous.fill(0);
-      ballRipplesActive = false;
-      ballStepsPending = 0;
-    }
     if (accumulatedTime >= FRAME_MS) {
       while (accumulatedTime >= FRAME_MS) {
-        if (pointerIdleTime < POINTER_SETTLE_MS) advanceRipples(field, POINTER_DAMPING);
-        if (ballRipplesActive) {
-          ballStepsPending += ballStepsPerFrame;
-          while (ballStepsPending >= 1) {
-            advanceRipples(ballField);
-            ballStepsPending--;
-          }
-        }
+        advanceRipples(field, RIPPLE_DAMPING);
         accumulatedTime -= FRAME_MS;
       }
-      draw(
-        Math.max(0, Math.min(1, (POINTER_SETTLE_MS - pointerIdleTime) / POINTER_FADE_MS)),
-        Math.max(0, Math.min(1, (BALL_SETTLE_MS - ballIdleTime) / BALL_FADE_MS)),
-      );
+      draw(Math.max(0, Math.min(1, (SETTLE_MS - idleTime) / FADE_MS)));
     }
     animationFrame = window.requestAnimationFrame(frame);
   }
@@ -202,23 +144,15 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     }
   }
 
-  function disturb(point: RipplePoint, strength: number, surface = field, radius?: number): void {
-    disturbRipple(
-      surface,
-      point.x * surface.width / viewportWidth,
-      point.y * surface.height / viewportHeight,
-      strength,
-      radius,
-    );
-    if (surface === ballField && strength > 0) {
-      lastBallInput = performance.now();
-      ballRipplesActive = true;
-    } else if (strength > 0) {
-      lastPointerInput = performance.now();
-    }
+  function disturb(point: RipplePoint, strength: number, source: RippleSource = RIPPLE_SOURCE.POINTER): void {
+    const x = point.x * field.width / viewportWidth;
+    const y = point.y * field.height / viewportHeight;
+    if (source === RIPPLE_SOURCE.PONG) disturbBallRipple(field, x, y, ballTravel, strength);
+    else disturbRipple(field, x, y, strength);
+    if (strength > 0) lastInput = performance.now();
   }
 
-  function trail(point: RipplePoint, previous: RipplePoint | undefined, strength: number): RipplePoint {
+  function trail(point: RipplePoint, previous: RipplePoint | undefined, strength: number, source: RippleSource = RIPPLE_SOURCE.POINTER): RipplePoint {
     if (document.hidden || motionShouldReduce(reducedMotion)) return point;
     if (strength <= 0) return point;
     const distance = previous ? Math.hypot(point.x - previous.x, point.y - previous.y) : 0;
@@ -227,10 +161,11 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     const start = previous ?? point;
     for (let step = 1; step <= steps; step++) {
       const fraction = step / steps;
+      if (source === RIPPLE_SOURCE.PONG) ballTravel += distance / steps;
       disturb({
         x: start.x + (point.x - start.x) * fraction,
         y: start.y + (point.y - start.y) * fraction,
-      }, strength);
+      }, strength, source);
     }
     wake();
     return point;
@@ -252,25 +187,9 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
       ballTravel = 0;
       return;
     }
-    // Let circular waves spread past the ball instead of collapsing into a sharp wake
-    const cellSize = Math.min(viewportWidth / ballField.width, viewportHeight / ballField.height);
-    const waveSpeed = cellSize * Math.SQRT1_2 * 1000 / FRAME_MS;
-    ballStepsPerFrame = Math.max(1, snapshot.ball.speed * BALL_WAVE_SPEED_RATIO / waveSpeed);
-    if (ball) {
-      const distance = Math.hypot(snapshot.ball.x - ball.x, snapshot.ball.y - ball.y);
-      for (let travel = BALL_WAKE_SPACING - ballTravel; travel <= distance; travel += BALL_WAKE_SPACING) {
-        const fraction = travel / distance;
-        disturb({
-          x: ball.x + (snapshot.ball.x - ball.x) * fraction,
-          y: ball.y + (snapshot.ball.y - ball.y) * fraction,
-        }, BALL_WAKE_STRENGTH * pongWeight(), ballField, BALL_DROP_RADIUS);
-        wake();
-      }
-      ballTravel = (ballTravel + distance) % BALL_WAKE_SPACING;
-    }
-    ball = snapshot.ball;
+    ball = trail(snapshot.ball, ball, pongWeight(), RIPPLE_SOURCE.PONG);
     if (snapshot.impact) {
-      disturb(snapshot.ball, BALL_IMPACT_STRENGTH, ballField, BALL_DROP_RADIUS);
+      disturb(snapshot.ball, BALL_IMPACT_STRENGTH);
       wake();
     }
   }

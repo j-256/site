@@ -38,6 +38,7 @@ npm install
 ```bash
 npm run dev                # http://localhost:4321 (also writes public/CNAME)
 npm test                   # vitest plus the required documentation cover
+npm run test:visual        # browser checks against a running server
 npm run typecheck          # astro check
 npm run build              # write CNAME, fetch project data, then astro build
 npm run refresh-project-cache # refresh the committed project fallback
@@ -47,11 +48,13 @@ npm run deploy:dry-run     # validate the current dist artifact with Wrangler
 
 Install the matching browser with `npx playwright install chromium` before using the cover command. It renders the candidate production build locally at 1440x1000 CSS pixels with 2x pixel density, dark colors, and reduced motion, replaces `docs/screenshots/cover.png` with a 2880x2000 PNG, and synchronizes that image into the built site's self-preview; it does not capture or deploy the live site.
 
+Visual checks use `SITE_URL` to select the running server, defaulting to `http://localhost:4321`. The controlled mouse and ball wake comparison requires Astro's development modules and reports a skip against production builds. The interaction checks run against either server type.
+
 ## Ripples
 
 Mouse, pen, and finger movement leave a soft gray wake behind the terminal content, including the nameplate and its controls. The sticky nameplate continues the same water surface while covering content that scrolls underneath. The waves spread, overlap, and fade back to black when movement stops. One-finger touch scrolling stays native, and the canvas never intercepts links, selection, or gestures. The simulation uses a bounded resolution, stops when the surface settles, and clears when the page is hidden.
 
-The first paddle return in Pong gradually hands the water from the cursor to the ball. During visible play, the ball stirs soft, rounded ripples that spread around it and small pulses at paddle and wall impacts. The waves keep pace as the ball accelerates. Pausing lets the water settle, and new serves begin a fresh trail. Sleep and dismissal return ripple control to the cursor; waking or restoring a revealed game hands it back to the ball. The gray palette stays the same throughout.
+The first paddle return in Pong gradually hands the water from the cursor to the ball. Both sources use the same water surface, trail density, and short decay. The ball varies the width and pressure of its circular disturbance along its path, leaving a connected wake with soft, curved edges and small pulses at paddle and wall impacts. Pausing lets the water settle, and new serves begin a fresh trail. Sleep and dismissal return ripple control to the cursor; waking or restoring a revealed game hands it back to the ball. The gray palette stays the same throughout.
 
 Ripples follow the same motion preference as the boot transcript and Pong: reduced motion disables them by default, `?animate=1` enables them for a preview, and `?animate=0` disables them explicitly.
 

@@ -411,7 +411,7 @@ export function initPongBackground(
     publishPongRipples({
       ownsSurface,
       ball: ownsSurface && !paused && state.serve.remainingSeconds === 0 && !resetRippleTrail
-        ? { x: state.ball.x, y: state.ball.y, speed: Math.hypot(state.ball.vx, state.ball.vy) }
+        ? { x: state.ball.x, y: state.ball.y }
         : null,
       impact: rippleImpact,
     });

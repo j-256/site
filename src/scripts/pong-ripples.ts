@@ -5,7 +5,7 @@ export interface RipplePoint {
 
 export interface PongRippleFrame {
   ownsSurface: boolean;
-  ball: (RipplePoint & { speed: number }) | null;
+  ball: RipplePoint | null;
   impact: boolean;
 }
 

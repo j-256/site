@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceRipples, createRippleField, disturbRipple, RIPPLE_MAX_CELLS } from '../src/lib/ripple';
+import { advanceRipples, createRippleField, disturbBallRipple, disturbRipple, RIPPLE_MAX_CELLS } from '../src/lib/ripple';
 
 describe('Ripple field', () => {
   it('bounds simulation work on a high-resolution display', () => {
@@ -31,20 +31,38 @@ describe('Ripple field', () => {
     expect(field.current.every(value => value === 0)).toBe(true);
   });
 
-  it('keeps a circular footprint and wavefront on a coarser field', () => {
-    const field = createRippleField(600, 600, 6);
-    const center = field.width / 2;
-    const at = (x: number, y: number) => field.current[(center + y) * field.width + center + x];
-    disturbRipple(field, center, center, 1, 2.5);
-    expect(field.width).toBe(100);
-    expect(at(2, 0)).toBeGreaterThan(0);
-    expect(at(2, 2)).toBe(0);
-    expect(at(3, 0)).toBe(0);
-    for (let step = 0; step < 24; step++) advanceRipples(field);
-    expect(Math.abs(at(10, 0))).toBeGreaterThan(0.01);
-    expect(at(10, 0)).toBeCloseTo(at(-10, 0));
-    expect(at(10, 0)).toBeCloseTo(at(0, 10));
-    expect(at(10, 0)).toBeCloseTo(at(0, -10));
+  it('varies the ball footprint while keeping every disturbance round and centered', () => {
+    const footprints = [];
+    for (const travel of [0, 18, 36, 54, 72]) {
+      const field = createRippleField(300, 300);
+      const center = field.width / 2;
+      const at = (x: number, y: number) => field.current[(center + y) * field.width + center + x];
+      disturbBallRipple(field, center, center, travel);
+      expect(at(0, 0)).toBe(Math.max(...field.current));
+      expect(at(0, 0)).toBeGreaterThan(0);
+      for (let offset = 1; offset <= 8; offset++) {
+        expect(at(offset, 0)).toBeCloseTo(at(-offset, 0));
+        expect(at(offset, 0)).toBeCloseTo(at(0, offset));
+        expect(at(offset, 0)).toBeCloseTo(at(0, -offset));
+      }
+      expect(at(8, 0)).toBe(0);
+      footprints.push(field.current);
+    }
+    expect(footprints[0]).not.toEqual(footprints[2]);
+    expect(footprints[0]).toEqual(footprints[4]);
+  });
+
+  it('respects the handoff strength for the ball without changing its footprint', () => {
+    const full = createRippleField(300, 180);
+    const faint = createRippleField(300, 180);
+    const silent = createRippleField(300, 180);
+    disturbBallRipple(full, 50, 30, 18);
+    disturbBallRipple(faint, 50, 30, 18, 0.25);
+    disturbBallRipple(silent, 50, 30, 18, 0);
+    for (let index = 0; index < full.current.length; index++) {
+      expect(faint.current[index]).toBeCloseTo(full.current[index] * 0.25);
+    }
+    expect(silent.current.every(value => value === 0)).toBe(true);
   });
 
   it('propagates a disturbance beyond the initial drop and then dissipates', () => {
