@@ -55,14 +55,22 @@ body {
   isolation: isolate;
 }
 
+.ripple-background,
 .pong-background {
   position: fixed;
   z-index: -1;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.035;
   pointer-events: none;
+}
+
+.ripple-background {
+  z-index: -2;
+}
+
+.pong-background {
+  opacity: 0.035;
   transition: opacity 240ms ease;
 }
 

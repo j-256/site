@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import AnimationPreference from '../components/AnimationPreference.astro';
 import PongBackground from '../components/PongBackground.astro';
+import RippleBackground from '../components/RippleBackground.astro';
 import { siteHost, siteUrl } from '../lib/site-host';
 import { links } from '../data/links';
 import { DESCRIPTION, WORDMARK } from '../data/site';
@@ -58,6 +59,7 @@ const buildDate = new Date().toISOString();
 <body>
   <a href="#content" class="skip-link">Skip to content</a>
   <div class="page" id="top" tabindex="-1">
+    <RippleBackground />
     <PongBackground />
     <slot name="banner" />
     <main id="content" tabindex="-1">

@@ -1,0 +1,11 @@
+<canvas class="ripple-background" data-ripple-background data-ripple-source="pointer" aria-hidden="true"></canvas>
+
+<script>
+  import { initRippleBackground } from '../scripts/ripple';
+
+  const canvas = document.querySelector('[data-ripple-background]');
+  if (canvas instanceof HTMLCanvasElement) {
+    const teardown = initRippleBackground(canvas);
+    import.meta.hot?.dispose(teardown);
+  }
+</script>

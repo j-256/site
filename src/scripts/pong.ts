@@ -30,6 +30,7 @@ import {
   type PaddleTouchPoints,
   type TouchPoint,
 } from '../lib/pong-touch';
+import { publishPongRipples } from './pong-ripples';
 
 const CANVAS_STATE = Object.freeze({
   IDLE: 'idle',
@@ -350,7 +351,7 @@ export function initPongBackground(
     paddleEmphasis.right.style.transform = `translate3d(${rightX}px, ${state.paddles.rightY - halfHeight}px, 0)`;
   }
 
-  function draw(): void {
+  function draw(rippleImpact = false, resetRippleTrail = false): void {
     const geometry = getCourtGeometry(court);
     const gameVisible = gameIsVisible();
     const ballDrawRadius = geometry.ballRadius * BALL_DRAW_SCALE;
@@ -406,6 +407,14 @@ export function initPongBackground(
     syncScore();
     syncBallEmphasis(ballDrawRadius);
     syncPaddleEmphasis(geometry);
+    const ownsSurface = gameIsLit() && !motionIsReduced();
+    publishPongRipples({
+      ownsSurface,
+      ball: ownsSurface && !paused && state.serve.remainingSeconds === 0 && !resetRippleTrail
+        ? { x: state.ball.x, y: state.ball.y, speed: Math.hypot(state.ball.vx, state.ball.vy) }
+        : null,
+      impact: rippleImpact,
+    });
   }
 
   function resize(): void {
@@ -419,7 +428,7 @@ export function initPongBackground(
     const rootStyle = getComputedStyle(document.documentElement);
     gameColor = rootStyle.getPropertyValue('--fg-dim').trim() || FALLBACK_GAME_COLOR;
     ballColor = rootStyle.getPropertyValue('--fg-bright').trim() || FALLBACK_BALL_COLOR;
-    draw();
+    draw(false, true);
   }
 
   function stopAnimation(): void {
@@ -472,14 +481,15 @@ export function initPongBackground(
         syncCanvasState();
       }
     }
+    const impact = ballHadImpact(state.ball, nextState.ball);
     if (brightnessStage === 0) ballImpact = 0;
     else {
-      ballImpact = ballHadImpact(state.ball, nextState.ball)
+      ballImpact = impact
         ? 1
         : decayBallImpact(ballImpact, seconds);
     }
     state = nextState;
-    draw();
+    draw(impact);
     animationFrame = window.requestAnimationFrame(runFrame);
   }
 
@@ -694,6 +704,7 @@ export function initPongBackground(
     stopAnimation();
     stopInactivityTimer();
     stopScoreTyping();
+    publishPongRipples({ ownsSurface: false, ball: null, impact: false });
     scoreTerminal.textContent = '';
     ballEmphasis.style.opacity = '0';
     ballEmphasis.dataset.pongEmphasis = 'hidden';
