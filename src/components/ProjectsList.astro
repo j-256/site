@@ -9,6 +9,7 @@ import { projectCoverAssetPath } from '../lib/project-assets';
 import { loadProjectData } from '../lib/project-data-store';
 import { projectPermissions } from '../lib/project-listing';
 import ProjectRow from './ProjectRow.astro';
+import ProjectViewer from './ProjectViewer.astro';
 
 const { data: projectData } = await loadProjectData(process.cwd());
 const PREVIEW_DELAY_MS = 500;
@@ -73,6 +74,8 @@ const rowCount = initialRows.length + disclosedRows.length;
   </figure>
 </div>
 
+<ProjectViewer />
+
 <script is:inline>
   var projectDisclosure = document.querySelector('[data-project-disclosure]');
   var disclosureSummary = document.querySelector('[data-project-disclosure-summary]');
@@ -125,11 +128,19 @@ const rowCount = initialRows.length + disclosedRows.length;
     if (previewLayer) previewLayer.removeAttribute('data-visible');
   }
 
+  function sizePreview(width, height) {
+    previewLayer.style.setProperty('--preview-aspect-ratio', String(width / height));
+    previewLayer.style.setProperty('--preview-source-width', String(width) + 'px');
+  }
+
   function showPreview(link) {
     if (!previewQuery.matches || !previewLayer || !previewImage || !previewName) return;
     var source = link.getAttribute('data-preview-src');
     var name = link.getAttribute('data-preview-name');
     if (!source || !name) return;
+    var width = Number(link.getAttribute('data-preview-width')) || 1;
+    var height = Number(link.getAttribute('data-preview-height')) || 1;
+    sizePreview(width, height);
     previewName.textContent = name;
     previewLayer.removeAttribute('data-ready');
     previewLayer.removeAttribute('data-error');
@@ -142,6 +153,7 @@ const rowCount = initialRows.length + disclosedRows.length;
       if (previewImage.getAttribute('src') === source) previewImage.removeAttribute('src');
       previewImage.setAttribute('src', source);
     } else if (previewImage.complete && previewImage.naturalWidth > 0) {
+      sizePreview(previewImage.naturalWidth, previewImage.naturalHeight);
       previewLayer.setAttribute('data-ready', '');
     }
     activeLink = link;
@@ -163,7 +175,7 @@ const rowCount = initialRows.length + disclosedRows.length;
 
   function syncPreview() {
     var link = currentIntent();
-    if (!previewQuery.matches || !link || dismissedLink === link) {
+    if (!previewQuery.matches || !link || dismissedLink === link || document.querySelector('[data-project-viewer][open]')) {
       clearPendingPreview();
       hidePreview();
       return;
@@ -176,6 +188,7 @@ const rowCount = initialRows.length + disclosedRows.length;
     previewImage.addEventListener('load', function () {
       if (previewImage.getAttribute('src') !== activeSource) return;
       imageFailed = false;
+      sizePreview(previewImage.naturalWidth, previewImage.naturalHeight);
       previewLayer.removeAttribute('data-error');
       previewLayer.setAttribute('data-ready', '');
     });
@@ -287,13 +300,13 @@ const rowCount = initialRows.length + disclosedRows.length;
       inset: 0;
       display: grid;
       place-items: center;
-      padding: clamp(1rem, 4vw, 3rem);
       pointer-events: none;
       visibility: hidden;
     }
     .project-preview[data-visible] { visibility: visible; }
     .preview-window {
-      width: min(48rem, 100%);
+      --preview-chrome-height: calc(3.8rem + 4px);
+      width: min(90vw, calc(var(--preview-source-width) + 2px), calc((85dvh - var(--preview-chrome-height)) * var(--preview-aspect-ratio, 1.6)));
       overflow: hidden;
       border: 1px solid var(--fg-bright);
       background: var(--bg);
@@ -303,6 +316,13 @@ const rowCount = initialRows.length + disclosedRows.length;
       padding: 0.35rem 0.6rem;
       color: var(--fg-dim);
       font-size: 0.8rem;
+    }
+    .preview-command > span:first-child,
+    .preview-path {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .preview-command {
       display: flex;
@@ -321,7 +341,7 @@ const rowCount = initialRows.length + disclosedRows.length;
       position: relative;
       display: grid;
       width: 100%;
-      aspect-ratio: 16 / 10;
+      aspect-ratio: var(--preview-aspect-ratio, 1.6);
       place-items: center;
       overflow: hidden;
       background: var(--bg);

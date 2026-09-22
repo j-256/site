@@ -31,7 +31,7 @@ const SUMMARY_PATH = process.env.GITHUB_STEP_SUMMARY;
 export const CAPTURE_VIEWPORT = Object.freeze({ width: 1440, height: 1000 });
 export const CAPTURE_CONTEXT = Object.freeze({
   colorScheme: 'dark' as const,
-  deviceScaleFactor: 1,
+  deviceScaleFactor: 2,
   reducedMotion: 'reduce' as const,
   viewport: CAPTURE_VIEWPORT,
 });
@@ -56,7 +56,7 @@ export function captureHelp(): string {
   return `Usage: npm run capture:cover -- [options]
 
 Build and render the candidate site locally, replace docs/screenshots/cover.png
-with a deterministic 1440x1000 PNG, and synchronize its project asset in dist.
+at 1440x1000 CSS pixels and 2x density, and synchronize its project asset in dist.
 
 Options:
   -h, --help  Show this help and exit
@@ -225,12 +225,12 @@ async function captureCover(): Promise<void> {
     });
     const dimensions = assertProjectCoverImage(image, { contentType: 'image/png' });
     if (
-      dimensions.width !== CAPTURE_VIEWPORT.width
-      || dimensions.height !== CAPTURE_VIEWPORT.height
+      dimensions.width !== CAPTURE_VIEWPORT.width * CAPTURE_CONTEXT.deviceScaleFactor
+      || dimensions.height !== CAPTURE_VIEWPORT.height * CAPTURE_CONTEXT.deviceScaleFactor
     ) {
       throw new Error(
         `captured ${dimensions.width}x${dimensions.height}, expected `
-        + `${CAPTURE_VIEWPORT.width}x${CAPTURE_VIEWPORT.height}`
+        + `${CAPTURE_VIEWPORT.width * CAPTURE_CONTEXT.deviceScaleFactor}x${CAPTURE_VIEWPORT.height * CAPTURE_CONTEXT.deviceScaleFactor}`
       );
     }
 

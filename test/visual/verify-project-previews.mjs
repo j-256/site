@@ -88,7 +88,7 @@ report('keyboard focus charges before previewing', (await secondLink.getAttribut
 report('partial keyboard dwell stays hidden', (await preview.getAttribute('data-visible')) === null);
 await previewImage.waitFor({ state: 'visible' });
 report('keyboard focus shows preview', (await preview.getAttribute('data-visible')) === '');
-report('focus selects the focused cover', (await previewImage.getAttribute('src'))?.includes('/project-assets/j-256/hookrelay/cover.png') === true);
+report('focus selects the focused cover', (await previewImage.getAttribute('src')) === (await secondLink.getAttribute('data-preview-src')));
 await desktopPage.keyboard.press('Escape');
 await desktopPage.waitForTimeout(previewDelay + 50);
 report('Escape hides a focused preview', (await preview.getAttribute('data-visible')) === null);
@@ -135,12 +135,13 @@ const mobile = await browser.newContext({
 const mobilePage = await mobile.newPage();
 await mobilePage.goto(SITE_URL, { waitUntil: 'networkidle' });
 const mobilePreview = mobilePage.locator('[data-project-preview]');
-const mobileImage = mobilePreview.locator('[data-preview-image]');
+const mobileImage = mobilePage.locator('[data-viewer-image]');
 await mobilePage.locator('[data-project-preview-link]').first().focus();
 report('mobile does not advertise hover', !(await mobilePage.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches)));
-report('mobile leaves preview hidden', await mobilePreview.evaluate(element => getComputedStyle(element).display === 'none'));
-report('mobile leaves cover unloaded', (await mobileImage.getAttribute('src')) === null);
-report('mobile does not charge a preview', (await mobilePage.locator('[data-project-preview-link]').first().getAttribute('data-preview-pending')) === null);
+report('mobile leaves hover preview hidden', await mobilePreview.evaluate(element => getComputedStyle(element).display === 'none'));
+report('mobile leaves cover unloaded until requested', (await mobileImage.getAttribute('src')) === null);
+report('mobile offers an explicit preview control', await mobilePage.locator('[data-project-viewer-open]').first().isVisible());
+report('mobile does not charge a hover preview', (await mobilePage.locator('[data-project-preview-link]').first().getAttribute('data-preview-pending')) === null);
 await mobile.close();
 
 await browser.close();

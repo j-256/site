@@ -28,6 +28,15 @@ const { row } = Astro.props;
     data-preview-width={row.coverWidth}
     data-preview-height={row.coverHeight}
   ><span class="preview-trigger" data-project-preview-trigger><span class="prefix">{row.prefix}</span> <span class="name">{row.name}</span><span class="preview-progress" aria-hidden="true"></span></span><span class="annotation"># {row.description ?? 'View repository on GitHub'}</span></a>
+  <button
+    class="preview-button"
+    type="button"
+    data-project-viewer-open
+    aria-label={`Preview ${row.name} screenshot`}
+    aria-haspopup="dialog"
+    aria-controls="project-viewer"
+    hidden
+  >[preview]</button>
 </li>
 
 <style>
@@ -75,7 +84,7 @@ const { row } = Astro.props;
     from { transform: scaleX(0); }
     to { transform: scaleX(1); }
   }
-  .prefix { white-space: pre; }
+  .prefix { white-space: pre-wrap; }
   .name {
     color: var(--fg-bright);
     font-weight: 700;
@@ -96,5 +105,26 @@ const { row } = Astro.props;
   .row-link:focus-visible {
     outline: 2px solid var(--fg-bright);
     outline-offset: 2px;
+  }
+  .preview-button { display: none; }
+  @media (any-pointer: coarse), (hover: none) {
+    .preview-button:not([hidden]) {
+      display: inline-flex;
+      align-items: center;
+      min-height: var(--tap-target-size);
+      margin-left: 2ch;
+      border: 0;
+      background: none;
+      color: var(--fg-bright);
+      font: inherit;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      scroll-margin-top: var(--row-scroll-margin-top, var(--hostbar-sticky-height));
+    }
+    .preview-button:focus-visible {
+      outline: 2px solid var(--fg-bright);
+      outline-offset: 2px;
+    }
   }
 </style>

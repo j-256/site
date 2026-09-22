@@ -644,6 +644,7 @@ export function initPongBackground(
   }
 
   function onKeyDown(event: KeyboardEvent): void {
+    if (document.querySelector('dialog[open]')) return;
     if (event.code === CONTROL_CODE.DISMISS) {
       if (event.repeat) return;
       const motionEnabled = !motionIsReduced() || forceAnimation();

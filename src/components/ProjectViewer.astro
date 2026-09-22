@@ -1,0 +1,119 @@
+<dialog
+  id="project-viewer"
+  class="project-viewer"
+  data-project-viewer
+  aria-labelledby="project-viewer-title"
+  aria-describedby="project-viewer-help"
+>
+  <header class="viewer-header">
+    <h2 id="project-viewer-title">$ preview <span data-viewer-name></span></h2>
+    <button type="button" data-viewer-close aria-label="Close screenshot preview" autofocus>[close]</button>
+  </header>
+  <div class="viewer-stage" data-viewer-stage>
+    <p class="viewer-status" data-viewer-status role="status"></p>
+    <img data-viewer-image alt="" decoding="async" draggable="false" />
+  </div>
+  <footer class="viewer-footer">
+    <div class="viewer-controls" role="group" aria-label="Screenshot zoom">
+      <button type="button" data-viewer-zoom-out aria-label="Zoom out">[-]</button>
+      <output data-viewer-zoom aria-label="Zoom level">100%</output>
+      <button type="button" data-viewer-zoom-in aria-label="Zoom in">[+]</button>
+      <button type="button" data-viewer-fit aria-label="Fit screenshot to viewer">[fit]</button>
+    </div>
+    <p id="project-viewer-help">Pinch to zoom; drag to pan</p>
+  </footer>
+</dialog>
+
+<script>
+  import { initProjectViewer } from '../scripts/project-viewer';
+
+  const dialog = document.querySelector('[data-project-viewer]');
+  if (dialog instanceof HTMLDialogElement) initProjectViewer(dialog);
+</script>
+
+<style>
+  .project-viewer {
+    position: fixed;
+    inset: 0 auto auto 0;
+    width: calc(100dvw - 1rem);
+    height: calc(100dvh - 1rem);
+    max-width: none;
+    max-height: none;
+    margin: 0.5rem;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--fg-bright);
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .project-viewer[open] { display: flex; flex-direction: column; }
+  .project-viewer::backdrop { background: rgb(0 0 0 / 85%); }
+  .viewer-header {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+    border-bottom: 1px solid var(--fg-dim);
+  }
+  .viewer-header h2 {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.8rem;
+    font-weight: 400;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  button {
+    min-width: var(--tap-target-size);
+    min-height: var(--tap-target-size);
+    flex-shrink: 0;
+    border: 0;
+    background: none;
+    color: var(--fg-bright);
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible { outline: 2px solid var(--fg-bright); outline-offset: -2px; }
+  button:disabled { color: var(--fg-dim); opacity: 0.5; cursor: default; }
+  .viewer-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+  }
+  .viewer-stage img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    max-width: none;
+    opacity: 0;
+    transform-origin: center;
+    pointer-events: none;
+  }
+  .project-viewer[data-ready] .viewer-stage img { opacity: 1; }
+  .viewer-status {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: center;
+    padding: 1rem;
+    color: var(--fg-dim);
+    text-align: center;
+    font-size: 0.8rem;
+  }
+  .viewer-footer {
+    flex-shrink: 0;
+    padding: 0 0.5rem 0.5rem;
+    border-top: 1px solid var(--fg-dim);
+    font-size: 0.8rem;
+  }
+  .viewer-controls { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+  .viewer-controls output { min-width: 4ch; text-align: center; }
+  .viewer-footer p { margin: 0; color: var(--fg-dim); text-align: center; }
+</style>
