@@ -43,7 +43,7 @@ export function disturbRipple(field: RippleField, x: number, y: number, strength
   }
 }
 
-export function advanceRipples(field: RippleField): void {
+export function advanceRipples(field: RippleField, damping = DAMPING): void {
   const { width, height, current, previous } = field;
   for (let row = 1; row < height - 1; row++) {
     for (let column = 1; column < width - 1; column++) {
@@ -51,7 +51,7 @@ export function advanceRipples(field: RippleField): void {
       previous[index] = (
         (current[index - 1] + current[index + 1] + current[index - width] + current[index + width]) / 2
         - previous[index]
-      ) * DAMPING;
+      ) * damping;
     }
   }
   field.current = previous;

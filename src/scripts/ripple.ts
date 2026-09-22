@@ -11,8 +11,11 @@ const MAX_FRAME_STEPS = 3;
 const TRAIL_SPACING = 10;
 const MAX_TRAIL_STEPS = 32;
 const MIN_TRAVEL = 3;
-const SETTLE_MS = 5000;
-const FADE_MS = 1500;
+const POINTER_DAMPING = 0.965;
+const POINTER_SETTLE_MS = 2500;
+const POINTER_FADE_MS = 1200;
+const BALL_SETTLE_MS = 5000;
+const BALL_FADE_MS = 1500;
 const RIPPLE_GRAY = 145;
 const MAX_ALPHA = 60;
 const LIGHT_STRENGTH = 48;
@@ -50,6 +53,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
   let ballTravel = 0;
   let ballStepsPerFrame = 1;
   let ballStepsPending = 0;
+  let lastPointerInput = Number.NEGATIVE_INFINITY;
   let lastBallInput = Number.NEGATIVE_INFINITY;
   let ballRipplesActive = false;
   const touches = new Map<number, RipplePoint>();
@@ -58,7 +62,6 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
   let handoffStartedAt = 0;
   let animationFrame = 0;
   let lastFrame = 0;
-  let lastInput = 0;
   let accumulatedTime = 0;
 
   function reset(): void {
@@ -69,6 +72,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     ball = undefined;
     ballTravel = 0;
     ballStepsPending = 0;
+    lastPointerInput = Number.NEGATIVE_INFINITY;
     lastBallInput = Number.NEGATIVE_INFINITY;
     ballRipplesActive = false;
     touches.clear();
@@ -145,15 +149,21 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
 
   function frame(now: number): void {
     animationFrame = 0;
-    const idleTime = now - lastInput;
-    if (document.hidden || motionShouldReduce(reducedMotion) || idleTime >= SETTLE_MS) {
+    const pointerIdleTime = now - lastPointerInput;
+    const ballIdleTime = now - lastBallInput;
+    if (document.hidden || motionShouldReduce(reducedMotion)
+      || (pointerIdleTime >= POINTER_SETTLE_MS && ballIdleTime >= BALL_SETTLE_MS)) {
       reset();
       return;
     }
     accumulatedTime += Math.min(now - lastFrame, FRAME_MS * MAX_FRAME_STEPS);
     lastFrame = now;
-    const ballIdleTime = now - lastBallInput;
-    if (ballRipplesActive && ballIdleTime >= SETTLE_MS) {
+    if (pointerIdleTime >= POINTER_SETTLE_MS && Number.isFinite(lastPointerInput)) {
+      field.current.fill(0);
+      field.previous.fill(0);
+      lastPointerInput = Number.NEGATIVE_INFINITY;
+    }
+    if (ballRipplesActive && ballIdleTime >= BALL_SETTLE_MS) {
       ballField.current.fill(0);
       ballField.previous.fill(0);
       ballRipplesActive = false;
@@ -161,7 +171,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     }
     if (accumulatedTime >= FRAME_MS) {
       while (accumulatedTime >= FRAME_MS) {
-        advanceRipples(field);
+        if (pointerIdleTime < POINTER_SETTLE_MS) advanceRipples(field, POINTER_DAMPING);
         if (ballRipplesActive) {
           ballStepsPending += ballStepsPerFrame;
           while (ballStepsPending >= 1) {
@@ -171,7 +181,10 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
         }
         accumulatedTime -= FRAME_MS;
       }
-      draw(Math.min(1, (SETTLE_MS - idleTime) / FADE_MS), Math.min(1, (SETTLE_MS - ballIdleTime) / FADE_MS));
+      draw(
+        Math.max(0, Math.min(1, (POINTER_SETTLE_MS - pointerIdleTime) / POINTER_FADE_MS)),
+        Math.max(0, Math.min(1, (BALL_SETTLE_MS - ballIdleTime) / BALL_FADE_MS)),
+      );
     }
     animationFrame = window.requestAnimationFrame(frame);
   }
@@ -183,9 +196,8 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
   }
 
   function wake(): void {
-    lastInput = performance.now();
     if (animationFrame === 0) {
-      lastFrame = lastInput;
+      lastFrame = performance.now();
       animationFrame = window.requestAnimationFrame(frame);
     }
   }
@@ -201,6 +213,8 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     if (surface === ballField && strength > 0) {
       lastBallInput = performance.now();
       ballRipplesActive = true;
+    } else if (strength > 0) {
+      lastPointerInput = performance.now();
     }
   }
 
