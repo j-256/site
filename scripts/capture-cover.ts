@@ -31,7 +31,7 @@ const SUMMARY_PATH = process.env.GITHUB_STEP_SUMMARY;
 export const CAPTURE_VIEWPORT = Object.freeze({ width: 1440, height: 1000 });
 export const CAPTURE_CONTEXT = Object.freeze({
   colorScheme: 'dark' as const,
-  deviceScaleFactor: 2,
+  deviceScaleFactor: 4,
   reducedMotion: 'reduce' as const,
   viewport: CAPTURE_VIEWPORT,
 });
@@ -56,7 +56,7 @@ export function captureHelp(): string {
   return `Usage: npm run capture:cover -- [options]
 
 Build and render the candidate site locally, replace docs/screenshots/cover.png
-at 1440x1000 CSS pixels and 2x density, and synchronize its project asset in dist.
+at 1440x1000 CSS pixels and 4x density, and synchronize its project asset in dist.
 
 Options:
   -h, --help  Show this help and exit

@@ -32,7 +32,7 @@ describe('cover capture contract', () => {
     expect(CAPTURE_VIEWPORT).toEqual({ width: 1440, height: 1000 });
     expect(CAPTURE_CONTEXT).toEqual({
       colorScheme: 'dark',
-      deviceScaleFactor: 2,
+      deviceScaleFactor: 4,
       reducedMotion: 'reduce',
       viewport: CAPTURE_VIEWPORT,
     });

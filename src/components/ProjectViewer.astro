@@ -20,7 +20,7 @@
       <button type="button" data-viewer-zoom-in aria-label="Zoom in">[+]</button>
       <button type="button" data-viewer-fit aria-label="Fit screenshot to viewer">[fit]</button>
     </div>
-    <p id="project-viewer-help">Pinch to zoom; drag to pan</p>
+    <p id="project-viewer-help">Scroll or pinch to zoom; drag to pan</p>
   </footer>
 </dialog>
 
@@ -87,6 +87,8 @@
     touch-action: none;
     user-select: none;
   }
+  .project-viewer[data-zoomed] .viewer-stage { cursor: grab; }
+  .project-viewer[data-zoomed] .viewer-stage:active { cursor: grabbing; }
   .viewer-stage img {
     position: absolute;
     top: 50%;

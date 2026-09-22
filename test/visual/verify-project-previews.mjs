@@ -82,6 +82,8 @@ await desktopPage.waitForTimeout(previewDelay + 50);
 report('pointer focus does not pin preview open', (await preview.getAttribute('data-visible')) === null);
 
 await desktopPage.keyboard.press('Tab');
+report('keyboard navigation reaches the screenshot button', await desktopPage.locator('[data-project-viewer-open]').first().evaluate(element => document.activeElement === element));
+await desktopPage.keyboard.press('Tab');
 report('keyboard navigation reaches the next entry', await secondLink.evaluate(element => document.activeElement === element));
 await desktopPage.waitForTimeout(Math.floor(previewDelay / 2));
 report('keyboard focus charges before previewing', (await secondLink.getAttribute('data-preview-pending')) === '');

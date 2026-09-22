@@ -60,6 +60,50 @@ try {
   assert.ok(await page.locator('[data-preview-image]').evaluate(image => image.getBoundingClientRect().width <= image.naturalWidth + 1));
   await capture(page, 'desktop-small-source');
   console.log('PASS  Small source images are not automatically enlarged beyond their native resolution');
+  const desktopButton = page.locator('[data-project-viewer-open]').first();
+  assert.ok(await desktopButton.isVisible());
+  const buttonStyle = await desktopButton.evaluate(button => {
+    const style = getComputedStyle(button);
+    return { color: style.color, background: style.backgroundColor, font: style.fontFamily };
+  });
+  assert.equal(buttonStyle.color, 'rgb(41, 254, 19)');
+  assert.equal(buttonStyle.background, 'rgba(0, 0, 0, 0)');
+  assert.ok(buttonStyle.font.includes('JetBrains Mono'));
+  await desktopButton.click();
+  await page.locator('[data-project-viewer][data-ready]').waitFor();
+  await page.keyboard.press('+');
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.equal((await page.evaluate(readViewer)).zoom, 150, 'Opening a cached cover preserves immediate zoom');
+  await page.keyboard.press('0');
+  const desktopBefore = await page.evaluate(readViewer);
+  const anchor = { x: desktopBefore.stage.x + desktopBefore.stage.width / 2 + 80,
+    y: desktopBefore.stage.y + desktopBefore.stage.height / 2 - 40 };
+  await page.mouse.move(anchor.x, anchor.y);
+  await page.mouse.wheel(0, -400);
+  await page.waitForFunction(() => Number.parseInt(document.querySelector('[data-viewer-zoom]').value, 10) > 100);
+  const desktopZoomed = await page.evaluate(readViewer);
+  for (const [axis, dimension] of [['x', 'width'], ['y', 'height']]) {
+    const before = (anchor[axis] - desktopBefore.image[axis]) / desktopBefore.image[dimension];
+    const after = (anchor[axis] - desktopZoomed.image[axis]) / desktopZoomed.image[dimension];
+    assert.ok(Math.abs(before - after) < 0.002, 'Wheel zoom keeps the image point beneath the pointer');
+  }
+  await page.mouse.down();
+  await page.mouse.move(anchor.x + 90, anchor.y + 40, { steps: 5 });
+  await page.mouse.up();
+  const desktopPanned = await page.evaluate(readViewer);
+  assert.ok(Math.abs(desktopPanned.image.x - desktopZoomed.image.x - 90) < 2);
+  assert.equal(desktopPanned.pageScale, 1);
+  assert.equal(desktopPanned.pageScroll, desktopBefore.pageScroll);
+  await capture(page, 'desktop-expanded-zoom');
+  await page.keyboard.press('0');
+  assert.equal((await page.evaluate(readViewer)).zoom, 100);
+  await page.keyboard.press('+');
+  assert.equal((await page.evaluate(readViewer)).zoom, 150);
+  await page.keyboard.press('-');
+  assert.equal((await page.evaluate(readViewer)).zoom, 100);
+  await page.keyboard.press('Escape');
+  assert.ok(await desktopButton.evaluate(button => document.activeElement === button));
+  console.log('PASS  Styled desktop controls open the viewer with anchored wheel zoom, mouse pan, keyboard zoom, and focus restoration');
   await desktop.close();
 
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });

@@ -9,6 +9,8 @@ import {
 } from '../lib/image-viewport';
 
 const ZOOM_STEP = 1.5;
+const WHEEL_ZOOM_RATE = 0.002;
+const WHEEL_LINE_PIXELS = 16;
 const FIT_VIEW: Readonly<ImageView> = Object.freeze({ scale: MIN_IMAGE_ZOOM, x: 0, y: 0 });
 const IMAGE_CENTER: Readonly<ImagePoint> = Object.freeze({ x: 0, y: 0 });
 
@@ -26,6 +28,7 @@ export function initProjectViewer(dialog: HTMLDialogElement): void {
   let opener: HTMLButtonElement | null = null;
   let view: ImageView = { ...FIT_VIEW };
   let fitted = { width: 0, height: 0 };
+  let fittedViewport = { width: 0, height: 0 };
   let gesture: { view: ImageView; center: ImagePoint; distance: number } | null = null;
   let previousOverflow = '';
   let previousScrollY = 0;
@@ -40,6 +43,7 @@ export function initProjectViewer(dialog: HTMLDialogElement): void {
     image.style.transform = `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
     zoomLevel.value = `${Math.round(view.scale * 100)}%`;
     const ready = dialog.hasAttribute('data-ready');
+    dialog.toggleAttribute('data-zoomed', ready && view.scale > MIN_IMAGE_ZOOM);
     zoomIn.disabled = !ready || view.scale >= MAX_IMAGE_ZOOM;
     zoomOut.disabled = !ready || view.scale <= MIN_IMAGE_ZOOM;
     fit.disabled = !ready || view.scale === MIN_IMAGE_ZOOM;
@@ -50,7 +54,8 @@ export function initProjectViewer(dialog: HTMLDialogElement): void {
 
   function fitToStage(): void {
     if (!dialog.open || !image.naturalWidth) return;
-    fitted = fitImage({ width: image.naturalWidth, height: image.naturalHeight }, viewport());
+    fittedViewport = viewport();
+    fitted = fitImage({ width: image.naturalWidth, height: image.naturalHeight }, fittedViewport);
     image.style.width = `${fitted.width}px`;
     image.style.height = `${fitted.height}px`;
     view = { ...FIT_VIEW };
@@ -60,14 +65,14 @@ export function initProjectViewer(dialog: HTMLDialogElement): void {
   }
 
   async function imageReady(): Promise<void> {
-    if (!dialog.open || !image.complete || !image.naturalWidth) return;
+    if (!dialog.open || dialog.hasAttribute('data-ready') || !image.complete || !image.naturalWidth) return;
     const source = image.src;
     try {
       await image.decode();
     } catch {
       return;
     }
-    if (!dialog.open || image.src !== source) return;
+    if (!dialog.open || dialog.hasAttribute('data-ready') || image.src !== source) return;
     dialog.setAttribute('data-ready', '');
     status.textContent = '';
     fitToStage();
@@ -116,6 +121,18 @@ export function initProjectViewer(dialog: HTMLDialogElement): void {
   });
   dialog.addEventListener('keydown', event => {
     event.stopPropagation();
+    if (dialog.hasAttribute('data-ready') && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        zoom(view.scale * ZOOM_STEP);
+      } else if (event.key === '-') {
+        event.preventDefault();
+        zoom(view.scale / ZOOM_STEP);
+      } else if (event.key === '0') {
+        event.preventDefault();
+        fitToStage();
+      }
+    }
     if (event.key !== 'Tab') return;
     const buttons = dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
     const first = buttons[0];
@@ -129,7 +146,10 @@ export function initProjectViewer(dialog: HTMLDialogElement): void {
   for (const event of ['touchstart', 'touchmove', 'touchend', 'touchcancel', 'pointermove']) {
     dialog.addEventListener(event, event => event.stopPropagation(), { passive: true });
   }
-  new ResizeObserver(fitToStage).observe(stage);
+  new ResizeObserver(() => {
+    const size = viewport();
+    if (size.width !== fittedViewport.width || size.height !== fittedViewport.height) fitToStage();
+  }).observe(stage);
 
   function zoom(scale: number): void {
     view = zoomImageAt(view, scale, IMAGE_CENTER);
@@ -140,10 +160,23 @@ export function initProjectViewer(dialog: HTMLDialogElement): void {
   zoomOut.addEventListener('click', () => zoom(view.scale / ZOOM_STEP));
   fit.addEventListener('click', fitToStage);
 
-  function pointerPoint(event: PointerEvent): ImagePoint {
+  function pointerPoint(event: MouseEvent): ImagePoint {
     const rect = stage.getBoundingClientRect();
     return { x: event.clientX - rect.left - rect.width / 2, y: event.clientY - rect.top - rect.height / 2 };
   }
+
+  stage.addEventListener('wheel', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!dialog.hasAttribute('data-ready')) return;
+    const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? WHEEL_LINE_PIXELS
+      : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? stage.clientHeight : 1;
+    const scale = view.scale * Math.exp(-event.deltaY * unit * WHEEL_ZOOM_RATE);
+    view = zoomImageAt(view, scale, pointerPoint(event));
+    pointers.clear();
+    gesture = null;
+    render();
+  }, { passive: false });
 
   function pointerGeometry() {
     const [first, second = first] = [...pointers.values()];

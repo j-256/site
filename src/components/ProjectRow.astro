@@ -106,25 +106,23 @@ const { row } = Astro.props;
     outline: 2px solid var(--fg-bright);
     outline-offset: 2px;
   }
-  .preview-button { display: none; }
-  @media (any-pointer: coarse), (hover: none) {
-    .preview-button:not([hidden]) {
-      display: inline-flex;
-      align-items: center;
-      min-height: var(--tap-target-size);
-      margin-left: 2ch;
-      border: 0;
-      background: none;
-      color: var(--fg-bright);
-      font: inherit;
-      cursor: pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      scroll-margin-top: var(--row-scroll-margin-top, var(--hostbar-sticky-height));
-    }
-    .preview-button:focus-visible {
-      outline: 2px solid var(--fg-bright);
-      outline-offset: 2px;
-    }
+  .preview-button {
+    display: none;
+    align-items: center;
+    min-height: var(--tap-target-size);
+    margin-left: 2ch;
+    border: 0;
+    background: none;
+    color: var(--fg-bright);
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    scroll-margin-top: var(--row-scroll-margin-top, var(--hostbar-sticky-height));
+  }
+  .preview-button:not([hidden]) { display: inline-flex; }
+  .preview-button:focus-visible {
+    outline: 2px solid var(--fg-bright);
+    outline-offset: 2px;
   }
 </style>
