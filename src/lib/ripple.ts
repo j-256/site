@@ -12,10 +12,6 @@ const DAMPING = 0.985;
 const DROP_RADIUS = 3.5;
 const DROP_STRENGTH = 2.5;
 const MAX_HEIGHT = 16;
-const BALL_PULSE_SPACING = 72;
-const BALL_MIN_RADIUS = 4;
-const BALL_MAX_RADIUS = 7;
-const BALL_MIN_STRENGTH = 0.2;
 
 export function createRippleField(width: number, height: number): RippleField {
   const cellSize = Math.max(RIPPLE_CELL_SIZE, Math.sqrt(width * height / RIPPLE_MAX_CELLS));
@@ -60,14 +56,4 @@ export function advanceRipples(field: RippleField, damping = DAMPING): void {
   }
   field.current = previous;
   field.previous = current;
-}
-
-export function disturbBallRipple(field: RippleField, x: number, y: number, travel: number, strength = 1): void {
-  // Vary the round footprint along the path to soften a perfectly coherent V-shaped wake
-  const pulse = (1 + Math.cos(travel / BALL_PULSE_SPACING * Math.PI * 2)) / 2;
-  disturbRipple(
-    field, x, y,
-    strength * (BALL_MIN_STRENGTH + (1 - BALL_MIN_STRENGTH) * pulse),
-    BALL_MIN_RADIUS + (BALL_MAX_RADIUS - BALL_MIN_RADIUS) * pulse,
-  );
 }

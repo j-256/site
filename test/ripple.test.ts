@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceRipples, createRippleField, disturbBallRipple, disturbRipple, RIPPLE_MAX_CELLS } from '../src/lib/ripple';
+import { advanceRipples, createRippleField, disturbRipple, RIPPLE_MAX_CELLS } from '../src/lib/ripple';
 
 describe('Ripple field', () => {
   it('bounds simulation work on a high-resolution display', () => {
@@ -29,40 +29,6 @@ describe('Ripple field', () => {
     disturbRipple(field, 50, 30, 0);
     advanceRipples(field);
     expect(field.current.every(value => value === 0)).toBe(true);
-  });
-
-  it('varies the ball footprint while keeping every disturbance round and centered', () => {
-    const footprints = [];
-    for (const travel of [0, 18, 36, 54, 72]) {
-      const field = createRippleField(300, 300);
-      const center = field.width / 2;
-      const at = (x: number, y: number) => field.current[(center + y) * field.width + center + x];
-      disturbBallRipple(field, center, center, travel);
-      expect(at(0, 0)).toBe(Math.max(...field.current));
-      expect(at(0, 0)).toBeGreaterThan(0);
-      for (let offset = 1; offset <= 8; offset++) {
-        expect(at(offset, 0)).toBeCloseTo(at(-offset, 0));
-        expect(at(offset, 0)).toBeCloseTo(at(0, offset));
-        expect(at(offset, 0)).toBeCloseTo(at(0, -offset));
-      }
-      expect(at(8, 0)).toBe(0);
-      footprints.push(field.current);
-    }
-    expect(footprints[0]).not.toEqual(footprints[2]);
-    expect(footprints[0]).toEqual(footprints[4]);
-  });
-
-  it('respects the handoff strength for the ball without changing its footprint', () => {
-    const full = createRippleField(300, 180);
-    const faint = createRippleField(300, 180);
-    const silent = createRippleField(300, 180);
-    disturbBallRipple(full, 50, 30, 18);
-    disturbBallRipple(faint, 50, 30, 18, 0.25);
-    disturbBallRipple(silent, 50, 30, 18, 0);
-    for (let index = 0; index < full.current.length; index++) {
-      expect(faint.current[index]).toBeCloseTo(full.current[index] * 0.25);
-    }
-    expect(silent.current.every(value => value === 0)).toBe(true);
   });
 
   it('propagates a disturbance beyond the initial drop and then dissipates', () => {
