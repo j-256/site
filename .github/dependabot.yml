@@ -11,6 +11,10 @@ updates:
       all-dependencies:
         patterns:
           - "*"
+    # Astro check requires TypeScript 5 or 6
+    ignore:
+      - dependency-name: "typescript"
+        versions: ["7.x"]
     commit-message:
       prefix: "chore"
       include: "scope"
