@@ -41,10 +41,10 @@
     "playwright": "^1.63.0",
     "tsx": "^4.23.15",
     "vitest": "^5.0.0",
-    "wrangler": "4.147.0"
+    "wrangler": "4.151.0"
   },
   "overrides": {
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "undici@7.29.0": "7.29.1",
     "undici@8.10.0": "8.11.2"
   }
