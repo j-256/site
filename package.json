@@ -30,18 +30,18 @@
     "test:visual": "node test/visual/run-all.mjs"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.10",
-    "astro": "^7.3.8",
+    "@astrojs/check": "^0.9.11",
+    "astro": "^7.4.1",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^26.6.5",
-    "@vitest/ui": "^5.0.4",
-    "playwright": "^1.64.0",
+    "@vitest/ui": "^5.0.5",
+    "playwright": "^1.64.1",
     "tsx": "^4.23.15",
     "vitest": "^5.0.0",
-    "wrangler": "4.151.0"
+    "wrangler": "4.151.2"
   },
   "overrides": {
     "sharp": "0.35.5",
