@@ -30,8 +30,8 @@
     "test:visual": "node test/visual/run-all.mjs"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.11",
-    "astro": "^7.4.1",
+    "@astrojs/check": "^0.9.12",
+    "astro": "^7.4.2",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
@@ -41,7 +41,7 @@
     "playwright": "^1.64.1",
     "tsx": "^4.23.15",
     "vitest": "^5.0.0",
-    "wrangler": "4.151.2"
+    "wrangler": "4.153.0"
   },
   "overrides": {
     "sharp": "0.35.5",
