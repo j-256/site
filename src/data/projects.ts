@@ -40,7 +40,6 @@ export const disclosedProjectListings: readonly ProjectListing[] = Object.freeze
   { repository: 'j-256/stream-eval', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/agent-skills', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/qlomni', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
-  { repository: 'j-256/ccam', artifact: PROJECT_ARTIFACT.RUNNABLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/endpoint-monitor', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/d1-r2-starter-factory', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
   { repository: 'j-256/git-crypt-vscode', artifact: PROJECT_ARTIFACT.BUNDLE, meta: { source: PROJECT_META_SOURCE.RELEASE } },
