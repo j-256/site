@@ -1,277 +1,266 @@
 {
   "j-256/stowplan": {
-    "value": "v1.2.8",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "v1.2.9",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "stowplan",
     "owner": "j-256",
     "description": "Track and reorganize physical inventory, with offline use, shared workspaces, bulk editing, and explainable move plans.",
     "url": "https://github.com/j-256/stowplan",
-    "coverWidth": 2880,
-    "coverHeight": 1920,
-    "coverSha256": "e199ee8bf37a0f992d1bab0c3dea462875622ea529af91cd8abe855667a4ddfb"
+    "coverWidth": 5760,
+    "coverHeight": 3840,
+    "coverSha256": "17e982bfe3f1c2decba942e25bc79dc701fe6cbe3ebbc89803c6010a4e6c629f"
   },
   "j-256/reorg": {
     "value": "v1.6.1",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "reorg",
     "owner": "j-256",
     "description": "Plan directory reorganizations yourself or with AI agents in a shared browser workspace, then safely apply changes with generated undo scripts.",
     "url": "https://github.com/j-256/reorg",
-    "coverWidth": 2560,
-    "coverHeight": 1600,
-    "coverSha256": "a470b1ee46d1acaac397100ef49566b467e2dc52e23486f0e4186642071d6131"
+    "coverWidth": 5120,
+    "coverHeight": 3200,
+    "coverSha256": "6147f79ef7dbcc83cd2ced80351c4230a6006f767b4ba6878116efb58f967f4f"
   },
   "j-256/cloudflare-fleet": {
-    "value": "v0.1.0",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "v0.2.1",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "cloudflare-fleet",
     "owner": "j-256",
     "description": "Audit Cloudflare zones, detect configuration drift, and review changes through a shared dashboard, CLI, and MCP server.",
     "url": "https://github.com/j-256/cloudflare-fleet",
-    "coverWidth": 2880,
-    "coverHeight": 2000,
-    "coverSha256": "a1a56d3b2d9f03a1e8de8ee510c413f1d944de01298a0d871b28d0ff93a6227a"
+    "coverWidth": 5760,
+    "coverHeight": 4000,
+    "coverSha256": "5038711eecc1e65221c98ab52e23007cfee67e890be096c059f91977defcd841"
   },
   "j-256/maintainer-hq": {
-    "value": "2026-09-14",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-11-16",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "maintainer-hq",
     "owner": "j-256",
     "description": "Self-hosted workspace for projects, repositories, monitoring, and provider configuration, with reviewed operations and an audit trail.",
     "url": "https://github.com/j-256/maintainer-hq",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "77438762fc8e9f793fdd74879f530e8935109fb1581d404be978f98883fb69b8"
+    "coverWidth": 5760,
+    "coverHeight": 4000,
+    "coverSha256": "d446da1e7aea966e4fc81365bbb429650c5585f79ba6c2145b4df735e8178906"
   },
   "j-256/guildcontrol": {
-    "value": "v2.2.0",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "v2.3.9",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "guildcontrol",
     "owner": "j-256",
     "description": "Search and administer Discord through MCP, with explicit access scopes and reviewed changes.",
     "url": "https://github.com/j-256/guildcontrol",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "c5168c2fb614964db4b6a499a7a4c718d47cc297f8bd44b154e4e625f900ea8d"
+    "coverWidth": 5760,
+    "coverHeight": 4000,
+    "coverSha256": "30c389f7d92d1d283e62fa4fcc2fe99c234ab44539aa9708e570e7b560f84b5e"
   },
   "j-256/sh": {
-    "value": "2026-09-04",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-11-13",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "sh",
     "owner": "j-256",
     "description": "Documented shell tools for debugging, DNS, files, and everyday automation, runnable without installation.",
     "url": "https://github.com/j-256/sh",
-    "coverWidth": 1440,
-    "coverHeight": 900,
-    "coverSha256": "a8f0105c8c0b87bf2d3dc2329fd5eb6e5b08d639a2bfd0edfcb2555b125a29cb"
+    "coverWidth": 5760,
+    "coverHeight": 3840,
+    "coverSha256": "6c07c41682fca38fb5925e93835fd2cfb7b88efae89a407ea9cc4bbb4cb49d44"
   },
   "j-256/hookrelay": {
     "value": "v1.5.0",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "hookrelay",
     "owner": "j-256",
     "description": "Route webhooks and email to push, chat, or signed webhooks, with queued delivery, retries, and an event dashboard.",
     "url": "https://github.com/j-256/hookrelay",
-    "coverWidth": 1600,
-    "coverHeight": 1000,
-    "coverSha256": "2179ce805c4432d262f76536f63e6b876bb2c9b02c0868d70bde7901b16c8ff4"
+    "coverWidth": 6400,
+    "coverHeight": 4000,
+    "coverSha256": "0aef60848afcfc03625a1300659b7b483bb406865616f4a599a20d1f07aa7904"
   },
   "j-256/stream-eval": {
     "value": "v0.3.0",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "stream-eval",
     "owner": "j-256",
     "description": "Test Agent Skills across Claude Code, Codex, and OpenCode with repeatable fixtures, output checks, and a live run dashboard.",
     "url": "https://github.com/j-256/stream-eval",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "79c320f19eacd805beaa3d154bcaf43a41f8ba5f4f82de5a30ecf3d0a2fdc2b2"
+    "coverWidth": 6400,
+    "coverHeight": 4000,
+    "coverSha256": "de79b7578701547dc9bcdef063beb5a146608647c6cdc2f34f5bcc5c30414ff9"
   },
   "j-256/agent-skills": {
     "value": "v0.1.3",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "agent-skills",
     "owner": "j-256",
     "description": "Portable agent skills and plugins for Salesforce API investigation, narrated shell demonstrations, and GitHub contributions.",
     "url": "https://github.com/j-256/agent-skills",
-    "coverWidth": 1360,
-    "coverHeight": 840,
-    "coverSha256": "11cea423d7057716923cc857fccdf6fe913940bc43e9b9f41246cda173386fa3"
+    "coverWidth": 6400,
+    "coverHeight": 4000,
+    "coverSha256": "cb25afa356f1cca1be0adfbdb4619015c075860b0930252bd426bcfabc722f9d"
   },
   "j-256/qlomni": {
-    "value": "v1.11.0",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "v1.15.0",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "qlomni",
     "owner": "j-256",
     "description": "Preview scripts, dotfiles, configuration files, and unfamiliar text formats with macOS Quick Look.",
     "url": "https://github.com/j-256/qlomni",
-    "coverWidth": 2136,
-    "coverHeight": 1136,
-    "coverSha256": "0649d2de85155ef14eb7f3b82998124f04ec4ebe0b7e1d5d0a3b4aa07e681821"
-  },
-  "j-256/ccam": {
-    "value": "v1.1.0",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
-    "name": "ccam",
-    "owner": "j-256",
-    "description": "Administer Salesforce Commerce Cloud Account Manager with a CLI, interactive terminal browser, and TypeScript SDK.",
-    "url": "https://github.com/j-256/ccam",
-    "coverWidth": 1280,
-    "coverHeight": 720,
-    "coverSha256": "baadf1e44922849d10de1f1f43b8c8acb58cfb14db829394147d02cf3fe3000e"
+    "coverWidth": 4400,
+    "coverHeight": 2768,
+    "coverSha256": "960b8bc3d01932463136984a75dc3f524e35b739d1f0eb59420e5dfea78de3d8"
   },
   "j-256/endpoint-monitor": {
-    "value": "v0.2.1",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "v0.3.0",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "endpoint-monitor",
     "owner": "j-256",
     "description": "Monitor public HTTP endpoints, track incidents and recoveries, and send signed alerts through Hookrelay.",
     "url": "https://github.com/j-256/endpoint-monitor",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "5f1de574c6108d580ae087cf991a3c9c71878482332f2f5d57742c93fb835038"
+    "coverWidth": 5760,
+    "coverHeight": 4000,
+    "coverSha256": "66c9e8b2aa34d450ef93d99cde9f3a26f5279aa79983d0fa0db7bc4def70d5b3"
   },
   "j-256/d1-r2-starter-factory": {
     "value": "v0.3.2",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "d1-r2-starter-factory",
     "owner": "j-256",
     "description": "Generate synchronized starters for ChatGPT Sites and Cloudflare Workers, with searchable document metadata in D1 and file storage in R2.",
     "url": "https://github.com/j-256/d1-r2-starter-factory",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "fe11d8dd03e66a65cb48a683fa0b736353fdd0d7e7ec9b7c31ca086fe3f7e658"
+    "coverWidth": 5760,
+    "coverHeight": 4200,
+    "coverSha256": "cc564ff355eee536fe46954d0eb0cd45a68b9ead535516e32df3557d68f77808"
   },
   "j-256/git-crypt-vscode": {
     "value": "v3.0.3",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "git-crypt-vscode",
     "owner": "j-256",
     "description": "Visual Studio Code extension that makes git-crypt repositories work in the Source Control panel.",
     "url": "https://github.com/j-256/git-crypt-vscode",
-    "coverWidth": 2784,
-    "coverHeight": 1824,
-    "coverSha256": "da57f489b3ae4ad44c4e9f329eabee22043d10320b73b62d5f7d48d740772995"
+    "coverWidth": 5760,
+    "coverHeight": 3600,
+    "coverSha256": "a3411de2fbf358e0d70812bef638e50225227645d0b60ce7c07f0fd46831615d"
   },
   "j-256/p12-generator": {
     "value": "v1.0.1",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "p12-generator",
     "owner": "j-256",
     "description": "Generate Salesforce B2C Commerce Staging code-upload client certificates as .p12 files entirely in the browser.",
     "url": "https://github.com/j-256/p12-generator",
-    "coverWidth": 2560,
-    "coverHeight": 1600,
-    "coverSha256": "68c659fafff6da00245079bf5927a1d02ae41f15c95277c5e951732711137732"
+    "coverWidth": 5120,
+    "coverHeight": 3212,
+    "coverSha256": "ce2df9f0925cb0616bf717a9fa8ecc35cc8d500283b15d3d1ad68e5a541184ab"
   },
   "j-256/bm_keyvalidator": {
     "value": "v1.0.1",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "bm_keyvalidator",
     "owner": "j-256",
     "description": "Verify matching private and public keys in Salesforce B2C Commerce Business Manager, including keys used for DKIM.",
     "url": "https://github.com/j-256/bm_keyvalidator",
-    "coverWidth": 3456,
-    "coverHeight": 1858,
-    "coverSha256": "e1463e922b8048a87f310ab1ddbc900807af458f40411761a54af20136f8724b"
+    "coverWidth": 5760,
+    "coverHeight": 4200,
+    "coverSha256": "fe3577013aa7ec4cfad0051d3f1d5579ea593041adb746d4b54e92f9152ed552"
   },
   "j-256/querypatch": {
-    "value": "2026-09-14",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-11-16",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "querypatch",
     "owner": "j-256",
     "description": "Add, replace, or remove URL query parameters in Chrome using ordered rules, with a local tester that explains each match.",
     "url": "https://github.com/j-256/querypatch",
-    "coverWidth": 880,
-    "coverHeight": 1240,
-    "coverSha256": "df085cb7d65d96cfc6385cdabf19d3d6e22d324162353d3c7c63dbef996c8128"
+    "coverWidth": 1760,
+    "coverHeight": 2480,
+    "coverSha256": "54f7a0ec572953f90a2a3e1edbd68425a606b369232ae47a2291bcfda87b9eb2"
   },
   "j-256/persistent-clicker": {
     "value": "v1.0.1",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "persistent-clicker",
     "owner": "j-256",
     "description": "Per-tab Chrome interval clicker that survives page navigation.",
     "url": "https://github.com/j-256/persistent-clicker",
-    "coverWidth": 1800,
-    "coverHeight": 1808,
-    "coverSha256": "1f1136b02c0a8fed5bdd3ed86ae5b98d59407dac5fad8d2f9e05051ba8ef9ddd"
+    "coverWidth": 3600,
+    "coverHeight": 3608,
+    "coverSha256": "14fe1c62d875628e345a4ee6a4f78b91cde822ec04a704c78afdcfab8abe7d57"
   },
   "j-256/timestamp-only": {
     "value": "v0.1.0",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "timestamp-only",
     "owner": "j-256",
     "description": "Automatically rename new macOS screenshots to clean timestamp filenames, with local processing and collision protection.",
     "url": "https://github.com/j-256/timestamp-only",
-    "coverWidth": 1200,
-    "coverHeight": 1416,
-    "coverSha256": "5e5567142c3efc5cffbce06f1514c905ddfc6880088c092f96ab53304e23f63c"
+    "coverWidth": 2400,
+    "coverHeight": 2832,
+    "coverSha256": "d8a500abadc1f3500b411f35bb1a1a176477544a4e7a5f18acf018dd42394466"
   },
   "j-256/rover-dumper": {
     "value": "v1.1.1",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "rover-dumper",
     "owner": "j-256",
     "description": "Download your pet's Rover photos at full quality in one ZIP, using a bookmarklet in your existing browser session.",
     "url": "https://github.com/j-256/rover-dumper",
-    "coverWidth": 1088,
-    "coverHeight": 792,
-    "coverSha256": "a46e7b052cdcb230b9bff3305611313e0a5802f76f34683d594b3ce943e7d527"
+    "coverWidth": 2176,
+    "coverHeight": 1568,
+    "coverSha256": "db9a4e1b4225d2decb33d217bb6a7ea1a90f2cd3a242be7f3ec76a2cd84b51fd"
   },
   "j-256/binary-watch-face": {
-    "value": "2026-09-14",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-11-16",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "binary-watch-face",
     "owner": "j-256",
     "description": "Configurable binary watch face for Wear OS, with complications and always-on display. Available as a beta.",
     "url": "https://github.com/j-256/binary-watch-face",
     "coverWidth": 454,
     "coverHeight": 454,
-    "coverSha256": "b9193937d7ce7afc0787a796d7e1dee6629d1563258b6d0a4feb2d2ed5dae837"
+    "coverSha256": "60ebde5e9ee0a668197b352b3d7d67d2b25716d360b08bd8511e226d44f5aa73"
   },
   "j-256/plugin_rootfile": {
-    "value": "2026-09-14",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-09-23",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "plugin_rootfile",
     "owner": "j-256",
     "description": "B2C Commerce cartridge for serving static text at root and custom paths, including service workers and .well-known resources.",
     "url": "https://github.com/j-256/plugin_rootfile",
-    "coverWidth": 1440,
-    "coverHeight": 900,
-    "coverSha256": "47b6a50adf37630009732197b65927877643fe8f9616ee3b653e837cddacd4c0"
+    "coverWidth": 5760,
+    "coverHeight": 3600,
+    "coverSha256": "8fb25d77dd0f9db25110132fb4ab7c39c4bba2e46498322be1664f0ca8357230"
   },
   "j-256/pwa-kit-extensibility": {
-    "value": "2026-09-14",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-11-16",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "pwa-kit-extensibility",
     "owner": "j-256",
     "description": "Reference B2C Commerce storefront extending the Retail React App with custom routing, server rendering integrations, and translations.",
     "url": "https://github.com/j-256/pwa-kit-extensibility",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "e3d38bcebd1fd367c6bdf3dc72ad1ff75fe28f8f8f51aa2c557b62f5b776a335"
+    "coverWidth": 5760,
+    "coverHeight": 4000,
+    "coverSha256": "f38584f0b312ffa9db56ab9c95afae0d19778dc8e6e7322388660771e94c420c"
   },
   "Strange-Lasers/strangelasers.com": {
-    "value": "2026-09-14",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-11-09",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "strangelasers.com",
     "owner": "Strange-Lasers",
     "description": "Strange Lasers' public website, with an animated SVG and WebGL identity and team profiles.",
     "url": "https://github.com/Strange-Lasers/strangelasers.com",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "fc000f8cb90d45cfadc7156fb713ddfc6acf4dcaef4a2ca24c0defe26e056b7d"
+    "coverWidth": 5760,
+    "coverHeight": 4000,
+    "coverSha256": "16926991ab0e50365345db6588b50b60466e6c76db6bf097798ec7b112c25907"
   },
   "j-256/site": {
-    "value": "2026-09-14",
-    "fetchedAt": "2026-09-14T17:04:20.514Z",
+    "value": "2026-11-16",
+    "fetchedAt": "2026-11-16T16:52:26.284Z",
     "name": "site",
     "owner": "j-256",
     "description": "Terminal-style Astro portfolio with live GitHub project metadata and cover previews.",
     "url": "https://github.com/j-256/site",
-    "coverWidth": 1440,
-    "coverHeight": 1000,
-    "coverSha256": "df707c9b890320f5301bd3b68de26682293b5d8b1beca9c77d2b33f7e576e00e"
+    "coverWidth": 5760,
+    "coverHeight": 4000,
+    "coverSha256": "0f4ce099ea5c31c86c56a5122a918a5e87b812d8cbcdc506be2edf292f59c65c"
   }
 }
