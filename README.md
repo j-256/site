@@ -54,7 +54,24 @@ Visual checks use `SITE_URL` to select the running server, defaulting to `http:/
 
 Mouse, pen, and finger movement leave a soft gray wake behind the terminal content, including the nameplate and its controls. The sticky nameplate continues the same water surface while covering content that scrolls underneath. The waves spread, overlap, and fade back to black when movement stops. One-finger touch scrolling stays native, and the canvas never intercepts links, selection, or gestures. The simulation uses a bounded resolution, stops when the surface settles, and clears when the page is hidden.
 
-The first paddle return in Pong gradually hands the water from the cursor to the ball. The ball leaves a short wake of soft, curved wave fronts on the same gray surface. Each crest expands and fades along the recent path, with tapered sides and constant source strength. The trail keeps its curved texture at different ball speeds, and paddle and wall impacts add small circular ripples. Pausing lets the water settle, and new serves begin a fresh trail. Sleep and dismissal return ripple control to the cursor; waking or restoring a revealed game hands it back to the ball. The gray palette stays the same throughout.
+The first paddle return in Pong gradually hands the water from the cursor to the ball. The ball disturbs an independent instance of the same water simulation as the pointer. Waves spread outward from fixed points along its path, overlap, and dissipate naturally; they keep expanding after the ball changes direction. Paddle and wall impacts disturb that same ball surface. Pausing lets the water settle, and new serves start a fresh input segment without drawing across the serve jump. Sleep and dismissal return ripple control to the cursor; waking or restoring a revealed game hands it back to the ball. The gray palette stays the same throughout.
+
+Pong wake tuning lives in `BALL_WAKE_CONFIG` at the top of `src/lib/ball-wake.ts`. These controls affect the ball's water independently of pointer ripples:
+
+| Setting | Unit | Effect |
+| --- | --- | --- |
+| `lifetimeMs` | milliseconds after the last ball movement or impact | Increase to let the ball's water settle for longer before it clears |
+| `fadeMs` | milliseconds | Final fade window within `lifetimeMs` |
+| `waveSpeed` | multiplier greater than 0 and at most 1 | Increase to spread waves outward faster and open up the wake; decrease for a narrower V |
+| `damping` | multiplier greater than 0 and less than 1 | Move closer to 1 to retain wave energy longer during movement and settling |
+| `trailSpacingPx` | positive CSS pixels along the ball's path | Decrease for a more continuous disturbance; increase for fewer drops |
+| `disturbanceRadiusPx` | positive CSS pixels | Increase for broader, softer disturbances |
+| `strength` | nonnegative multiplier | Adjust how strongly the ball disturbs the water |
+| `opacity` | multiplier from 0 to 1 | Adjust ball-wake opacity relative to the shared `MAX_ALPHA` |
+
+The ball's square artwork does not determine the water footprint: `disturbanceRadiusPx` defines a round source. Increase it for a broader rounded wake.
+
+For longer-lived water, increase `damping` toward 1 and allow a longer `lifetimeMs`. The lifetime is an idle cleanup limit for the entire ball surface; each disturbance dissipates through the simulation rather than having a separate expiration time. Both fields use bounded simulation grids. The shared `RIPPLE_GRAY` in `src/scripts/ripple.ts` still controls the gray color of both sources.
 
 Ripples follow the same motion preference as the boot transcript and Pong: reduced motion disables them by default, `?animate=1` enables them for a preview, and `?animate=0` disables them explicitly.
 

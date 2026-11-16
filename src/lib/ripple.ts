@@ -43,15 +43,18 @@ export function disturbRipple(field: RippleField, x: number, y: number, strength
   }
 }
 
-export function advanceRipples(field: RippleField, damping = DAMPING): void {
+export function advanceRipples(field: RippleField, damping = DAMPING, waveSpeed = 1, isotropic = false): void {
   const { width, height, current, previous } = field;
+  const propagation = waveSpeed ** 2 / 2;
   for (let row = 1; row < height - 1; row++) {
     for (let column = 1; column < width - 1; column++) {
       const index = row * width + column;
-      previous[index] = (
-        (current[index - 1] + current[index + 1] + current[index - width] + current[index + width]) / 2
-        - previous[index]
-      ) * damping;
+      const cardinal = current[index - 1] + current[index + 1] + current[index - width] + current[index + width];
+      const laplacian = isotropic
+        ? (4 * cardinal + current[index - width - 1] + current[index - width + 1]
+          + current[index + width - 1] + current[index + width + 1] - 20 * current[index]) / 6
+        : cardinal - 4 * current[index];
+      previous[index] = (2 * current[index] - previous[index] + propagation * laplacian) * damping;
     }
   }
   field.current = previous;

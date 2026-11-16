@@ -3,7 +3,7 @@ import {
   ANIMATION_MODE_ATTRIBUTE,
   motionShouldReduce,
 } from '../lib/animation-preference';
-import { createBallWake, endBallWake, moveBallWake, shadeBallWake } from '../lib/ball-wake';
+import { advanceBallWake, createBallWake, disturbBallWake, endBallWake, hasBallWake, moveBallWake, shadeBallWake } from '../lib/ball-wake';
 import { advanceRipples, createRippleField, disturbRipple } from '../lib/ripple';
 import { subscribeToPongRipples, type PongRippleFrame, type RipplePoint } from './pong-ripples';
 
@@ -15,7 +15,7 @@ const MIN_TRAVEL = 3;
 const RIPPLE_DAMPING = 0.965;
 const SETTLE_MS = 2500;
 const FADE_MS = 1200;
-const RIPPLE_GRAY = 145;
+const RIPPLE_GRAY = 85;
 const MAX_ALPHA = 60;
 const LIGHT_STRENGTH = 48;
 const HANDOFF_MS = 1000;
@@ -38,7 +38,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
   let field = createRippleField(viewportWidth, viewportHeight);
   let pixels: ImageData;
   let mouse: RipplePoint | undefined;
-  let ballWake = createBallWake();
+  let ballWake = createBallWake(viewportWidth, viewportHeight);
   let lastInput = Number.NEGATIVE_INFINITY;
   const touches = new Map<number, RipplePoint>();
   let handoffFrom = 0;
@@ -53,7 +53,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     animationFrame = 0;
     accumulatedTime = 0;
     mouse = undefined;
-    ballWake = createBallWake();
+    ballWake = createBallWake(viewportWidth, viewportHeight);
     lastInput = Number.NEGATIVE_INFINITY;
     touches.clear();
     field.current.fill(0);
@@ -69,6 +69,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     viewportWidth = window.innerWidth;
     viewportHeight = window.innerHeight;
     field = createRippleField(viewportWidth, viewportHeight);
+    ballWake = createBallWake(viewportWidth, viewportHeight);
     canvas.width = field.width;
     canvas.height = field.height;
     pixels = context!.createImageData(field.width, field.height);
@@ -90,7 +91,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
         pixels.data[index * 4 + 3] = MAX_ALPHA * intensity / (MAX_ALPHA + intensity) * fade;
       }
     }
-    shadeBallWake(ballWake, pixels.data, width, height, viewportWidth, viewportHeight, now, MAX_ALPHA * fade);
+    shadeBallWake(ballWake, pixels.data, now, MAX_ALPHA);
     context!.putImageData(pixels, 0, 0);
     drawSurfaces();
   }
@@ -114,7 +115,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
   function frame(now: number): void {
     animationFrame = 0;
     const idleTime = now - lastInput;
-    if (document.hidden || motionShouldReduce(reducedMotion) || idleTime >= SETTLE_MS) {
+    if (document.hidden || motionShouldReduce(reducedMotion) || (idleTime >= SETTLE_MS && !hasBallWake(ballWake, now))) {
       reset();
       return;
     }
@@ -123,6 +124,7 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
     if (accumulatedTime >= FRAME_MS) {
       while (accumulatedTime >= FRAME_MS) {
         advanceRipples(field, RIPPLE_DAMPING);
+        advanceBallWake(ballWake, now);
         accumulatedTime -= FRAME_MS;
       }
       draw(Math.max(0, Math.min(1, (SETTLE_MS - idleTime) / FADE_MS)), now);
@@ -189,7 +191,8 @@ export function initRippleBackground(canvas: HTMLCanvasElement): () => void {
       wake();
     }
     if (snapshot.impact) {
-      disturb(snapshot.ball, BALL_IMPACT_STRENGTH);
+      disturbBallWake(ballWake, snapshot.ball.x, snapshot.ball.y, now, BALL_IMPACT_STRENGTH);
+      lastInput = now;
       wake();
     }
   }

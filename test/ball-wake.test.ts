@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { createBallWake, endBallWake, moveBallWake, shadeBallWake, type BallWake } from '../src/lib/ball-wake';
+import {
+  BALL_WAKE_CONFIG,
+  advanceBallWake,
+  createBallWake,
+  disturbBallWake,
+  endBallWake,
+  hasBallWake,
+  moveBallWake,
+  shadeBallWake,
+} from '../src/lib/ball-wake';
+import { RIPPLE_MAX_CELLS } from '../src/lib/ripple';
 
 const SIZE = 300;
 const MAX_ALPHA = 60;
 
-function shade(wake: BallWake, time: number): Uint8ClampedArray {
-  const pixels = new Uint8ClampedArray(SIZE * SIZE * 4);
-  shadeBallWake(wake, pixels, SIZE, SIZE, SIZE, SIZE, time, MAX_ALPHA);
+function shade(wake: ReturnType<typeof createBallWake>, time: number): Uint8ClampedArray {
+  const pixels = new Uint8ClampedArray(wake.field.width * wake.field.height * 4);
+  shadeBallWake(wake, pixels, time, MAX_ALPHA);
   return pixels;
 }
 
@@ -15,100 +25,115 @@ function peak(pixels: Uint8ClampedArray): number {
 }
 
 describe('Ball wake', () => {
-  it('samples the same path consistently at different input frame rates', () => {
-    function trace(frameRate: number): BallWake {
-      const wake = createBallWake();
-      for (let frame = 0; frame <= frameRate; frame++) {
-        moveBallWake(wake, 100 + 350 * frame / frameRate, 150, 1000 * frame / frameRate);
+  it('spreads outward behind and ahead of a stationary emission instead of chasing the heading', () => {
+    const wake = createBallWake(SIZE, SIZE);
+    moveBallWake(wake, 150, 150, 0);
+    endBallWake(wake);
+    for (let frame = 1; frame <= 45; frame++) advanceBallWake(wake, frame * 1000 / 60);
+    const pixels = shade(wake, 750);
+    const { width, height } = wake.field;
+    let ahead = 0;
+    let behind = 0;
+    let outer = 0;
+    for (let row = 1; row < height - 1; row++) {
+      for (let column = 1; column < width - 1; column++) {
+        const alpha = pixels[(row * width + column) * 4 + 3]!;
+        if (column > width / 2) ahead += alpha;
+        if (column < width / 2) behind += alpha;
+        if (Math.hypot(column - width / 2, row - height / 2) > 5) outer += alpha;
       }
-      return wake;
+    }
+    expect(ahead).toBeGreaterThan(0);
+    expect(behind).toBe(ahead);
+    expect(outer).toBeGreaterThan(0);
+  });
+
+  it('lights a round disturbance evenly on opposing diagonals', () => {
+    const wake = createBallWake(SIZE, SIZE);
+    moveBallWake(wake, 150, 150, 0);
+    const pixels = shade(wake, 0);
+    const alpha = (column: number, row: number) => pixels[(row * wake.field.width + column) * 4 + 3]!;
+    expect(alpha(52, 52)).toBeGreaterThan(0);
+    expect(alpha(52, 48)).toBe(alpha(52, 52));
+  });
+
+  it('samples the same path consistently at different input frame rates', () => {
+    function trace(frameRate: number) {
+      const wake = createBallWake(SIZE, SIZE);
+      for (let frame = 0; frame <= frameRate; frame++) {
+        moveBallWake(wake, 50 + 150 * frame / frameRate, 150, 1000 * frame / frameRate);
+      }
+      return wake.field.current;
     }
     const slow = trace(60);
     const fast = trace(144);
-    expect(slow.crests.length).toBe(fast.crests.length);
-    for (const [index, crest] of slow.crests.entries()) {
-      expect(crest.x).toBeCloseTo(fast.crests[index]!.x);
-      expect(crest.time).toBeCloseTo(fast.crests[index]!.time);
-      expect(crest.headingX).toBeCloseTo(fast.crests[index]!.headingX);
-    }
+    for (const [index, value] of slow.entries()) expect(value).toBeCloseTo(fast[index]!, 5);
   });
 
-  it('does not emit waves from a stationary ball or a silent source', () => {
-    const wake = createBallWake();
+  it('does not build up waves from a stationary ball or a silent source', () => {
+    const wake = createBallWake(SIZE, SIZE);
     moveBallWake(wake, 100, 100, 0);
+    const initial = [...wake.field.current];
     moveBallWake(wake, 100, 100, 100);
     moveBallWake(wake, 150, 100, 200, 0);
-    expect(wake.crests).toEqual([]);
+    expect([...wake.field.current]).toEqual(initial);
   });
 
   it('starts a fresh segment after a serve without drawing across the jump', () => {
-    const wake = createBallWake();
+    const wake = createBallWake(SIZE, SIZE);
     moveBallWake(wake, 20, 100, 0);
     moveBallWake(wake, 50, 100, 100);
-    const previousCrests = [...wake.crests];
     endBallWake(wake);
     moveBallWake(wake, 250, 100, 200);
-    expect(wake.crests).toEqual(previousCrests);
-    moveBallWake(wake, 280, 100, 300);
-    expect(wake.crests.filter(crest => crest.x > 50 && crest.x < 250)).toEqual([]);
-  });
-
-  it('keeps old wave headings when the ball reflects', () => {
-    const wake = createBallWake();
-    moveBallWake(wake, 100, 100, 0);
-    moveBallWake(wake, 200, 100, 300);
-    const countBeforeBounce = wake.crests.length;
-    moveBallWake(wake, 150, 100, 450);
-    expect(wake.crests.slice(0, countBeforeBounce).every(crest => crest.headingX === 1)).toBe(true);
-    expect(wake.crests.slice(countBeforeBounce).every(crest => crest.headingX === -1)).toBe(true);
-  });
-
-  it('bounds the history during a long rally', () => {
-    const wake = createBallWake();
-    for (let frame = 0; frame < 1000; frame++) moveBallWake(wake, frame * 10, 100, frame * 16);
-    const filledLength = wake.crests.length;
-    for (let frame = 1000; frame < 10_000; frame++) moveBallWake(wake, frame * 10, 100, frame * 16);
-    expect(wake.crests.length).toBe(filledLength);
-  });
-
-  it('curves the crests and tapers their sides symmetrically', () => {
-    const wake = createBallWake();
-    moveBallWake(wake, 100, 100, 0);
-    moveBallWake(wake, 101, 100, 3);
-    const pixels = shade(wake, 200);
-    const alpha = (x: number, y: number) => pixels[(y * SIZE + x) * 4 + 3]!;
-    expect(alpha(115, 100)).toBeGreaterThan(50);
-    expect(alpha(112, 110)).toBeGreaterThan(alpha(115, 110));
-    expect(alpha(112, 110)).toBe(alpha(112, 90));
-    expect(alpha(90, 125)).toBe(0);
-  });
-
-  it('rotates the texture with the path without changing its brightness', () => {
-    const horizontal = createBallWake();
-    const vertical = createBallWake();
-    moveBallWake(horizontal, 100, 100, 0);
-    moveBallWake(horizontal, 101, 100, 3);
-    moveBallWake(vertical, 100, 100, 0);
-    moveBallWake(vertical, 100, 101, 3);
-    const across = shade(horizontal, 200);
-    const down = shade(vertical, 200);
-    for (let row = 70; row < 135; row++) {
-      for (let column = 70; column < 135; column++) {
-        expect(across[(row * SIZE + column) * 4 + 3]).toBe(down[(column * SIZE + row) * 4 + 3]);
-      }
+    const row = Math.round(100 * wake.field.height / SIZE);
+    for (let column = 25; column <= 70; column++) {
+      expect(wake.field.current[row * wake.field.width + column]).toBe(0);
     }
   });
 
-  it('fades after stopping, respects the handoff, and clears expired waves', () => {
-    const wake = createBallWake();
-    moveBallWake(wake, 100, 100, 0, 0.5);
-    moveBallWake(wake, 101, 100, 3, 0.5);
-    const moving = peak(shade(wake, 50));
-    expect(moving).toBeGreaterThan(20);
-    expect(moving).toBeLessThanOrEqual(MAX_ALPHA / 2);
-    expect(peak(shade(wake, 500))).toBeGreaterThan(moving * 0.7);
-    expect(peak(shade(wake, 1500))).toBeLessThan(moving / 4);
-    expect(peak(shade(wake, 1600))).toBe(0);
-    expect(wake.crests).toEqual([]);
+  it('keeps a stopped wake visible beyond the pointer settling time and clears at its own timeout', () => {
+    const wake = createBallWake(SIZE, SIZE);
+    moveBallWake(wake, 150, 150, 0);
+    endBallWake(wake);
+    for (let frame = 1; frame <= 168; frame++) advanceBallWake(wake, frame * 1000 / 60);
+    expect(peak(shade(wake, 2800))).toBeGreaterThan(0);
+    expect(hasBallWake(wake, 2800)).toBe(true);
+    advanceBallWake(wake, BALL_WAKE_CONFIG.lifetimeMs);
+    expect(peak(shade(wake, BALL_WAKE_CONFIG.lifetimeMs))).toBe(0);
+    expect(wake.field.current.every(value => value === 0)).toBe(true);
+    expect(wake.field.previous.every(value => value === 0)).toBe(true);
+    expect(hasBallWake(wake, BALL_WAKE_CONFIG.lifetimeMs)).toBe(false);
+  });
+
+  it('bounds simulation work and remains finite during long fast rallies', () => {
+    const wake = createBallWake(7680, 4320);
+    expect(wake.field.current.length).toBeLessThanOrEqual(RIPPLE_MAX_CELLS);
+    const bounded = createBallWake(SIZE, SIZE);
+    for (let frame = 0; frame < 300; frame++) {
+      moveBallWake(bounded, 150 + 120 * Math.sin(frame / 8), 150, frame * 1000 / 60);
+      advanceBallWake(bounded, frame * 1000 / 60);
+    }
+    expect(bounded.field.current.every(Number.isFinite)).toBe(true);
+    expect(peak(shade(bounded, 5000))).toBeGreaterThan(0);
+  });
+
+  it('adds expanding impact ripples on the same ball water surface', () => {
+    const wake = createBallWake(SIZE, SIZE);
+    disturbBallWake(wake, 150, 150, 0, 1);
+    advanceBallWake(wake, 16);
+    expect(peak(shade(wake, 16))).toBeGreaterThan(0);
+    expect(hasBallWake(wake, 16)).toBe(true);
+  });
+
+  it('respects source strength and opacity without erasing another source', () => {
+    const full = createBallWake(SIZE, SIZE);
+    const faint = createBallWake(SIZE, SIZE);
+    moveBallWake(full, 150, 150, 0, 1);
+    moveBallWake(faint, 150, 150, 0, 0.25);
+    expect(peak(shade(faint, 0))).toBeLessThan(peak(shade(full, 0)));
+    expect(peak(shade(full, 0))).toBeLessThanOrEqual(MAX_ALPHA * BALL_WAKE_CONFIG.opacity);
+    const pixels = new Uint8ClampedArray(full.field.width * full.field.height * 4).fill(100);
+    shadeBallWake(full, pixels, 0, MAX_ALPHA);
+    expect(pixels.every(value => value === 100)).toBe(true);
   });
 });

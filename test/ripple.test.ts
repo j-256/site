@@ -44,6 +44,43 @@ describe('Ripple field', () => {
     expect(Math.max(...field.current.map(Math.abs))).toBeLessThan(peak / 20);
   });
 
+  it('can slow propagation without changing the default water simulation', () => {
+    const normal = createRippleField(600, 360);
+    const slow = createRippleField(600, 360);
+    const x = normal.width / 2;
+    const y = normal.height / 2;
+    disturbRipple(normal, x, y);
+    disturbRipple(slow, x, y);
+    for (let frame = 0; frame < 30; frame++) {
+      advanceRipples(normal, 0.985);
+      advanceRipples(slow, 0.985, 0.35);
+    }
+    function extent(field: typeof normal): number {
+      let radius = 0;
+      for (let column = 1; column < field.width - 1; column++) {
+        if (Math.abs(field.current[y * field.width + column]!) > 0.01) radius = Math.max(radius, Math.abs(column - x));
+      }
+      return radius;
+    }
+    expect(extent(slow)).toBeGreaterThan(3);
+    expect(extent(slow)).toBeLessThan(extent(normal) * 0.7);
+    expect(slow.current.every(Number.isFinite)).toBe(true);
+  });
+
+  it('propagates round waves through diagonal neighbors as well as cardinal neighbors', () => {
+    const round = createRippleField(21, 21);
+    const standard = createRippleField(21, 21);
+    const center = 3 * round.width + 3;
+    round.current[center] = 1;
+    standard.current[center] = 1;
+    advanceRipples(round, 1, 0.35, true);
+    advanceRipples(standard, 1, 0.35);
+    const diagonal = center + round.width + 1;
+    expect(round.current[diagonal]).toBeGreaterThan(0);
+    expect(standard.current[diagonal]).toBe(0);
+    expect(round.current[center + round.width + 1]).toBe(round.current[center - round.width - 1]);
+  });
+
   it('keeps repeated edge disturbances finite and the boundary calm', () => {
     const field = createRippleField(300, 180);
     for (let frame = 0; frame < 300; frame++) {
